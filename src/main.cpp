@@ -9,6 +9,8 @@
 
 #include "simplesim/main.hpp"
 #include "simplesim/text.hpp"
+#include "simplesim/drone.hpp"
+#include "simplesim/shapes.hpp"
 
 int main(int argc, char* argv[])
 {
@@ -19,11 +21,7 @@ int main(int argc, char* argv[])
 
     geometry_msgs::msg::Pose2D desiredPose;
 
-    auto poseSubscription = node->create_subscription<geometry_msgs::msg::Pose2D>("goal_pose", 10, [&desiredPose](geometry_msgs::msg::Pose2D::UniquePtr msg) {desiredPose = *msg;});
-
-    float droneSpeed = 5.0;
-    float yawSpeed = 5.0;
-    float p = 0.2;
+    auto poseSubscription = node->create_subscription<geometry_msgs::msg::Pose2D>("~/goal_pose", 10, [&desiredPose](geometry_msgs::msg::Pose2D::UniquePtr msg) {desiredPose = *msg;});
 
     sf::ContextSettings settings;
     settings.antialiasingLevel = 8;
@@ -36,18 +34,15 @@ int main(int argc, char* argv[])
     int errorDisplayHandle = debugText.addFixedTextLine("x error: 0, y error: 0");
     int velocityDisplayHandle = debugText.addFixedTextLine("x velocity: 0, y velocity: 0");
 
-    ManagedSprite droneSprite;
-    if (!droneSprite.load(executableLocation / "data/sprites/drone.png")) {
-        RCLCPP_ERROR(rclcpp::get_logger("rclcpp"), "Failed to load drone sprite!");
-        return 1;
-    }
+    Drone drone({300.0f, 300.0f});
+    drone.load(executableLocation / "data/sprites/drone.png");
+    drone.addWaypoint({300.f, 200.f});
 
-    droneSprite.scaleToSize(75.0, 75.0);
-    droneSprite.setPosition(300.0, 300.0);
+    std::vector<XShape> waypointMarks {};
 
     sf::Clock clock;
 
-    while (window.isOpen())
+    while (window.isOpen() && rclcpp::ok())
     {
         sf::Event event;
         while (window.pollEvent(event))
@@ -60,6 +55,14 @@ int main(int argc, char* argv[])
                 sf::FloatRect visibleArea(0, 0, event.size.width, event.size.height);
                 window.setView(sf::View(visibleArea));
             }
+            // Clicks set new waypoints
+            if (event.type == sf::Event::MouseButtonReleased) {
+                if (event.mouseButton.button == sf::Mouse::Left)
+                    {
+                        drone.addWaypoint(sf::Vector2f(event.mouseButton.x, event.mouseButton.y));
+                        waypointMarks.push_back(XShape(sf::Vector2f(event.mouseButton.x, event.mouseButton.y), 12.5f));
+                    }
+            }
         }
 
         auto dt = clock.restart();
@@ -67,20 +70,18 @@ int main(int argc, char* argv[])
         window.clear(sf::Color::White);
         
         // Drone
-        auto currentPosition = droneSprite.getPosition();
-        auto goalPosition = sf::Vector2f(desiredPose.x, desiredPose.y);
-        auto error = goalPosition - currentPosition;
-        auto commandedVelocity = p * error * droneSpeed;
-        droneSprite.move(dt.asSeconds() * commandedVelocity);
-        auto orientationError = desiredPose.theta - droneSprite.getRotation();
-        auto commandedYaw = p * orientationError * yawSpeed;
-        droneSprite.rotate(dt.asSeconds() * commandedYaw);
-        window.draw(droneSprite);
+        drone.tick(dt);
+        window.draw(drone.sprite);
+
+        // Debug marks
+        for (auto& waypointMark : waypointMarks) {
+            window.draw(waypointMark);
+        }
 
         // Debug text
         debugText.updateFixedTextLine(fpsDisplayHandle, fmt::format("{:.1f} fps", 1 / dt.asSeconds()));
-        debugText.updateFixedTextLine(errorDisplayHandle, fmt::format("x error: {}, y error: {}", error.x, error.y));
-        debugText.updateFixedTextLine(velocityDisplayHandle, fmt::format("x velocity: {}, y velocity: {}", commandedVelocity.x, commandedVelocity.y));
+        // debugText.updateFixedTextLine(errorDisplayHandle, fmt::format("x error: {:.2f}, y error: {:.2f}", error.x, error.y));
+        // debugText.updateFixedTextLine(velocityDisplayHandle, fmt::format("x velocity: {:.2f}, y velocity: {:.2f}", commandedVelocity.x, commandedVelocity.y));
         debugText.tick(dt);
 
         for (auto& textLine : debugText.drawables()) {
@@ -89,6 +90,11 @@ int main(int argc, char* argv[])
         
         window.display();
         rclcpp::spin_some(node);
+    }
+
+    // In case we get here from rclcpp::ok -> false
+    if (window.isOpen()) {
+        window.close();
     }
 
     rclcpp::shutdown();

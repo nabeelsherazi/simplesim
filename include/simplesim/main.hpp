@@ -21,7 +21,7 @@ public:
         this->texture.setSmooth(true);
         this->setTexture(this->texture);
         this->localBounds = this->getLocalBounds();
-        this->setOrigin(this->localBounds.width / 2, this->localBounds.height / 1.5);
+        this->setOrigin(this->localBounds.width / 2.0f, this->localBounds.height / 1.5f);
         return true;
     }
 

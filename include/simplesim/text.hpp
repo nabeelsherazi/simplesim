@@ -89,9 +89,7 @@ public:
 
     auto drawables() {
         // Create a range for temporaryTextLines that extracts sf::Text from each pair
-        auto tempTextRange = temporaryTextLines | ranges::views::transform([](auto& pair) -> sf::Text& {
-            return pair.first;  // Ensure returning by reference
-        });
+        auto tempTextRange = temporaryTextLines | ranges::views::transform([](auto& pair) -> sf::Text& {return pair.first;});
 
         // Join fixedTextLines and tempTextRange into a single range
         return ranges::views::concat(fixedTextLines, tempTextRange);
