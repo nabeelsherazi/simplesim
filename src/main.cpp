@@ -22,6 +22,7 @@ int main(int argc, char* argv[])
     geometry_msgs::msg::Pose2D desiredPose;
 
     auto poseSubscription = node->create_subscription<geometry_msgs::msg::Pose2D>("~/goal_pose", 10, [&desiredPose](geometry_msgs::msg::Pose2D::UniquePtr msg) {desiredPose = *msg;});
+    rclcpp::executors::SingleThreadedExecutor executor;
 
     sf::ContextSettings settings;
     settings.antialiasingLevel = 8;
@@ -34,9 +35,13 @@ int main(int argc, char* argv[])
     int errorDisplayHandle = debugText.addFixedTextLine("x error: 0, y error: 0");
     int velocityDisplayHandle = debugText.addFixedTextLine("x velocity: 0, y velocity: 0");
 
-    Drone drone({300.0f, 300.0f});
-    drone.load(executableLocation / "data/sprites/drone.png");
-    drone.addWaypoint({300.f, 200.f});
+    std::shared_ptr<Drone> drone = std::make_shared<Drone>("drone_node");
+    drone->load(executableLocation / "data/sprites/drone.png");
+    drone->scaleToSize(75.0f);
+    // drone.addWaypoint({300.f, 200.f});
+
+    executor.add_node(node);
+    executor.add_node(drone);
 
     std::vector<XShape> waypointMarks {};
 
@@ -59,7 +64,7 @@ int main(int argc, char* argv[])
             if (event.type == sf::Event::MouseButtonReleased) {
                 if (event.mouseButton.button == sf::Mouse::Left)
                     {
-                        drone.addWaypoint(sf::Vector2f(event.mouseButton.x, event.mouseButton.y));
+                        // drone.addWaypoint(sf::Vector2f(event.mouseButton.x, event.mouseButton.y));
                         waypointMarks.push_back(XShape(sf::Vector2f(event.mouseButton.x, event.mouseButton.y), 12.5f));
                     }
             }
@@ -69,9 +74,9 @@ int main(int argc, char* argv[])
 
         window.clear(sf::Color::White);
         
-        // Drone
-        drone.tick(dt);
-        window.draw(drone.sprite);
+        // Controller
+        drone->tick(dt);
+        window.draw(drone->sprite);
 
         // Debug marks
         for (auto& waypointMark : waypointMarks) {
@@ -89,7 +94,7 @@ int main(int argc, char* argv[])
         }
         
         window.display();
-        rclcpp::spin_some(node);
+        executor.spin_some();
     }
 
     // In case we get here from rclcpp::ok -> false

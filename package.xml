@@ -11,7 +11,7 @@
 
   <depend>sfml-dev</depend>
   <depend>range-v3</depend>
-  <depend>fmt-dev</depend>
+  <depend>fmt</depend>
 
   <test_depend>ament_lint_auto</test_depend>
   <test_depend>ament_lint_common</test_depend>
