@@ -3,90 +3,57 @@
 #include <vector>
 #include <filesystem>
 #include <rclcpp/rclcpp.hpp>
-#include <geometry_msgs/msg/pose_array.hpp>
+#include <geometry_msgs/msg/vector3.hpp>
 #include <SFML/Graphics.hpp>
 #include <cmath>
+#include <memory>
 #include "simplesim/utils.hpp"
+
+using namespace std::placeholders;
 
 
 class Controller : public rclcpp::Node {
 
 public:
-    Controller(std::string node_name, sf::Vector2f initialPosition) :
-    Node(node_name),
-    waypointEpsilon(10.0f),
-    p(0.2f),
-    d(0.1f),
-    maxSpeed(5.0f)
-    {
-    };
+    Controller(std::string node_name, sf::Vector2f initialPosition);
 
-    void setControllerP(float p) {
-        this->p = p;
-    }
+    void parameterCallback(const rclcpp::Parameter& param);
 
-    void setControllerD(float d) {
-        this->d = d;
-    }
+    void addWaypoint(sf::Vector2f wpt);
 
-    void setMaxSpeed(float maxSpeed) {
-        this->maxSpeed = maxSpeed;
-    }
+    void tick(sf::Time dt);
 
-    void setWaypointEpsilon(float eps) {
-        this-> waypointEpsilon = eps;
-    }
-
-    bool load(const std::filesystem::path& filename) {
-        if (!this->texture.loadFromFile(filename))
-            return false;
-        this->texture.setSmooth(true);
-        this->sprite.setTexture(this->texture);
-        auto localBounds = this->sprite.getLocalBounds();
-        // This sprite is a little bottom-heavy, set origin in middle horizontally and 2/3 the way down vertically
-        this->sprite.setOrigin(localBounds.width / 2.0f, localBounds.height / 1.5f);
-        this->sprite.setScale(75.0f / localBounds.width, 75.0f / localBounds.height);
-        this->currentPosition = this->sprite.getPosition();
-        return true;
-    }
-
-    void addWaypoint(sf::Vector2f wpt) {
-        this->waypointList.push_back(wpt);
-    }
-
-    void tick(sf::Time dt) {
-        if (currentWaypointIndex < waypointList.size()) {
-            // Calculate velocity command
-            auto nextWaypointPosition = waypointList[currentWaypointIndex];
-            auto error = nextWaypointPosition - currentPosition;
-            auto commandedVelocity = p * error * maxSpeed;
-
-            // Move based on commanded velocity
-            this->sprite.move(dt.asSeconds() * commandedVelocity);
-            this->currentPosition = sprite.getPosition();
-
-            // Move to next waypoint if we're close enough to the current one
-            if (norm(nextWaypointPosition - currentPosition) <= waypointEpsilon) {
-                this->currentWaypointIndex++;
-            }
-        }
-    }
-
-    sf::Sprite sprite;
-
-private:
+    void reset();
 
     float waypointEpsilon;
 
-    float p;
-    float d;
+    float kp_position;
+    float kd_position;
+    sf::Vector2f lastPositionError;
 
-    float maxSpeed;
+    float kp_velocity;
+    float kd_velocity;
+    sf::Vector2f lastVelocityError;
 
-    sf::Vector2f currentPosition;
-    int currentWaypointIndex = 0;
+    float maxAcceleration;
+
     std::vector<sf::Vector2f> waypointList;
 
-    sf::Texture texture;
+    sf::Vector2f currentPosition;
+    sf::Vector2f currentVelocity;
+    int currentWaypointIndex = 0;
 
+    sf::Vector2f positionError;
+    sf::Vector2f deltaError;
+    sf::Vector2f velocityCommand;
+
+private:
+
+    rclcpp::Subscription<geometry_msgs::msg::Vector3>::SharedPtr positionSubscriber;
+    rclcpp::Subscription<geometry_msgs::msg::Vector3>::SharedPtr velocitySubscriber;
+    rclcpp::Subscription<geometry_msgs::msg::Vector3>::SharedPtr waypointSubscriber;
+    rclcpp::Publisher<geometry_msgs::msg::Vector3>::SharedPtr accelerationCommandPublisher;
+    rclcpp::Publisher<geometry_msgs::msg::Vector3>::SharedPtr velocityCommandPublisher;
+    std::shared_ptr<rclcpp::ParameterEventHandler> parameterSubscriber;
+    std::shared_ptr<rclcpp::ParameterCallbackHandle> parameterCallbackHandle;
 };

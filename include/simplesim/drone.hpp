@@ -4,62 +4,49 @@
 #include <SFML/Graphics.hpp>
 #include <rclcpp/rclcpp.hpp>
 #include <geometry_msgs/msg/vector3.hpp>
-#include <functional>
 
 using namespace std::placeholders;
 
 class Drone : public rclcpp::Node {
 
 public:
-    /// @brief Class that represents the "real world" drone
-    Drone(std::string node_name) : Node(node_name) {
-        this->position_publisher = this->create_publisher<geometry_msgs::msg::Vector3>("/simplesim/drone/position", 10);
-        this->jerkCommandSubscriber = this->create_subscription<geometry_msgs::msg::Vector3>("/simplesim/drone/jerk_cmd", 10, std::bind(&Drone::setJerkCommand, this, _1));
+
+    /// @brief Enum for the simulated control mode (whether to accept a velocity or acceleration command)
+    enum class ControlMode {
+        Velocity,
+        Acceleration
     };
 
-    /// @brief Load sprite
+    /// @brief Class that represents the "real world" drone
+    /// @param node_name Name of the ROS2 node
+    /// @param controlMode the control mode offered
+    Drone(std::string node_name, Drone::ControlMode controlMode = ControlMode::Acceleration);
+
+    /// @brief Loads sprite
     /// @param filename file to load sprite from
     /// @return whether the sprite was successfully loaded
-    bool load(const std::filesystem::path& filename) {
-        if (!this->texture.loadFromFile(filename))
-        {
-            return false;
-        }
-        this->texture.setSmooth(true);
-        this->sprite.setTexture(this->texture);
-        this->localBounds = this->sprite.getLocalBounds();
-        // This sprite is a little bottom-heavy, set origin in middle horizontally and 2/3 the way down vertically
-        this->sprite.setOrigin(this->localBounds.width / 2.0f, this->localBounds.height / 1.5f);
-        return true;
-    }
+    bool load(const std::filesystem::path& filename);
 
-    void scaleToSize(float size_x, float size_y) {
-        this->sprite.setScale(size_x / this->localBounds.width, size_y / this->localBounds.height);
-    }
+    /// @brief Scales sprite to given size in pixels
+    /// @param size_x x size pixels
+    /// @param size_y y size pixels
+    void scaleToSize(float size_x, float size_y);
 
-    void scaleToSize(float size) {
-        this->scaleToSize(size, size);
-    }
+    /// @brief Scaled sprite to given size in pixels
+    /// @param size size to scale both x and y to, pixels
+    void scaleToSize(float size);
 
-    void setJerkCommand(const geometry_msgs::msg::Vector3::SharedPtr msg) {
-        this->linearJerkCommand = sf::Vector2f(msg->x, msg->y);
-        RCLCPP_INFO(this->get_logger(), "jerk command: %f, %f", msg->x, msg->y);
-    }
+    void setAccelerationCommand(const geometry_msgs::msg::Vector3::SharedPtr msg);
 
-    void tick(const sf::Time dt) {
-        this->currentAcceleration += dt.asSeconds() * linearJerkCommand;
-        this->currentVelocity += dt.asSeconds() * this->currentAcceleration;
-        this->sprite.move(dt.asSeconds() * this->currentVelocity);
-        this->currentPosition = this->sprite.getPosition();
-        this->publish();
-    }
+    void setVelocityCommand(const geometry_msgs::msg::Vector3::SharedPtr msg);
 
-    void publish() {
-        geometry_msgs::msg::Vector3 msg;
-        msg.x = this->currentPosition.x;
-        msg.y = this->currentPosition.y;
-        this->position_publisher->publish(msg);
-    }
+    /// @brief Advance the simulation
+    /// @param dt the amount of time that has passed since the last call
+    void tick(const sf::Time dt);
+
+    void publish();
+
+    void reset();
     
     sf::Sprite sprite;
 
@@ -67,11 +54,13 @@ private:
     sf::Texture texture;
     sf::FloatRect localBounds;
 
-    sf::Vector2f linearJerkCommand;
-    sf::Vector2f currentAcceleration;
+    Drone::ControlMode controlMode;
+
+    sf::Vector2f accelerationCommand;
     sf::Vector2f currentVelocity;
     sf::Vector2f currentPosition;
 
     rclcpp::Publisher<geometry_msgs::msg::Vector3>::SharedPtr position_publisher;
-    rclcpp::Subscription<geometry_msgs::msg::Vector3>::SharedPtr jerkCommandSubscriber;
+    rclcpp::Subscription<geometry_msgs::msg::Vector3>::SharedPtr accelerationCommandSubscriber;
+    rclcpp::Subscription<geometry_msgs::msg::Vector3>::SharedPtr velocityCommandSubscriber;
 };
