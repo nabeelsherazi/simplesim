@@ -18,19 +18,20 @@
 static const auto executableLocation = std::filesystem::canonical("/proc/self/exe").parent_path();
 
 int main(int argc, char* argv[]) {
-    // ROS node
 
+    // ROS
     rclcpp::init(argc, argv);
     rclcpp::Node::SharedPtr node = std::make_shared<rclcpp::Node>("simplesim");
-
-    auto waypointPublisher = node->create_publisher<geometry_msgs::msg::Vector3>("/simplesim/drone/waypoint", 10);
     rclcpp::executors::StaticSingleThreadedExecutor executor;
+    auto waypointPublisher = node->create_publisher<geometry_msgs::msg::Vector3>("/simplesim/drone/waypoint", 10);
 
+    // SFML setup
     sf::ContextSettings settings;
     settings.antialiasingLevel = 8;
     sf::RenderWindow window(sf::VideoMode(640, 480), "simplesim!", sf::Style::Default, settings);
     window.setVerticalSyncEnabled(true);
 
+    // Setup debug console
     DebugTextConsole debugText;
     debugText.loadFont(OPEN_SANS_REGULAR);
     int fpsDisplayHandle = debugText.addFixedTextLine("0 fps");
@@ -40,22 +41,30 @@ int main(int argc, char* argv[]) {
         debugText.addFixedTextLine("(kp) * error + (kd) * (error - lastError) / dt = command");
     int windDisplayHandle = debugText.addFixedTextLine("current wind: (0, 0)");
 
+    // Simulated drone model setup
     DroneOptions droneOptions{.controlMode = DroneOptions::ControlMode::Velocity,
                               .initialPosition = {320.0f, 240.0f},
                               .windIntensity = 50.0f};
     std::shared_ptr<Drone> drone = std::make_shared<Drone>("drone_node", droneOptions);
+
+    // Sprite for drone model, limit scope because setSprite will move in its guts
     {
         ManagedSprite droneSprite;
-        droneSprite.load(executableLocation / "data/sprites/drone.png");
+        if (!droneSprite.load(executableLocation / "data/sprites/drone.png")) {
+            return 1;
+        }
         droneSprite.scaleToSize(75.0f);
         droneSprite.setOriginRelative({0.5f, 0.75f});
         drone->setSprite(std::move(droneSprite));
     }
 
+    // Trajectory controller
     ControllerOptions controllerOptions;
     std::shared_ptr<Controller> controller = std::make_shared<Controller>("controller_node", controllerOptions);
 
+    // Renderer
     Visuals visuals;
+    std::vector<const Renderable*> renderableEntities{controller.get(), drone.get()};
 
     auto resetService = node->create_service<std_srvs::srv::Trigger>(
         "~/reset", [&](__attribute__((unused)) const std_srvs::srv::Trigger::Request::SharedPtr request,
@@ -68,8 +77,6 @@ int main(int argc, char* argv[]) {
     executor.add_node(node);
     executor.add_node(drone);
     executor.add_node(controller);
-
-    std::vector<const Renderable*> renderableEntities{controller.get(), drone.get()};
 
     sf::Clock clock;
 
@@ -88,8 +95,6 @@ int main(int argc, char* argv[]) {
             // Clicks set new waypoints
             if (event.type == sf::Event::MouseButtonReleased) {
                 if (event.mouseButton.button == sf::Mouse::Left) {
-                    // drone.addWaypoint(sf::Vector2f(event.mouseButton.x,
-                    // event.mouseButton.y));
                     geometry_msgs::msg::Vector3 msg;
                     msg.x = event.mouseButton.x;
                     msg.y = event.mouseButton.y;
@@ -102,7 +107,7 @@ int main(int argc, char* argv[]) {
 
         window.clear(sf::Color::White);
 
-        // Controller
+        // Advance simulation
         drone->tick(dt);
         controller->tick(dt);
         visuals.update(renderableEntities);
