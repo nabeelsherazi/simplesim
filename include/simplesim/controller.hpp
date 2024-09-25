@@ -23,7 +23,7 @@ struct ControllerOptions {
     PidCoefficients positionControllerTune = {.kp = 2.0f, .kd = -0.05f};
     PidCoefficients velocityControllerTune = {.kp = 0.5f, .kd = -0.05f};
     sf::Vector2f initialPosition = {0.0f, 0.0f};
-    float waypointEpsilon = 10.0f;
+    float waypointEpsilon = 25.0f;
     float maxAcceleration = 10.0f;
 };
 
@@ -56,7 +56,8 @@ class Controller : public rclcpp::Node, public Renderable {
     float maxAcceleration;
 
     std::vector<sf::Vector2f> waypointList;
-    std::vector<CrossShape> waypointMarks;
+    CrossShapeArray waypointMarks;
+    sf::VertexArray waypointPathLines;
 
     sf::Vector2f currentPosition;
     sf::Vector2f currentVelocity;

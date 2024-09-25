@@ -9,6 +9,7 @@ Controller::Controller(std::string node_name, ControllerOptions& options) : Node
     this->options = options;
     this->kp_position = options.positionControllerTune.kp;
     this->kd_position = options.positionControllerTune.kd;
+    this->waypointEpsilon = options.waypointEpsilon;
     this->currentPosition = options.initialPosition;
 
     // World input subscribers
@@ -35,6 +36,9 @@ Controller::Controller(std::string node_name, ControllerOptions& options) : Node
         parameterSubscriber->add_parameter_callback("kp_position", std::bind(&Controller::parameterCallback, this, _1));
     parameterCallbackHandle =
         parameterSubscriber->add_parameter_callback("kd_position", std::bind(&Controller::parameterCallback, this, _1));
+
+    // Configure drawables
+    waypointPathLines.setPrimitiveType(sf::LinesStrip);
 };
 
 void Controller::parameterCallback(const rclcpp::Parameter& param) {
@@ -48,7 +52,8 @@ void Controller::parameterCallback(const rclcpp::Parameter& param) {
 
 void Controller::addWaypoint(sf::Vector2f wpt) {
     this->waypointList.push_back(wpt);
-    this->waypointMarks.push_back({wpt, 12.5f});
+    this->waypointMarks.addCross(wpt);
+    this->waypointPathLines.append(sf::Vertex(wpt, sf::Color::Black));
 }
 
 void Controller::tick(sf::Time dt) {
@@ -102,9 +107,7 @@ void Controller::reset() {
 
 std::vector<const sf::Drawable*> Controller::getDrawables() const {
     std::vector<const sf::Drawable*> drawables;
-    for (auto& wp : waypointMarks) {
-        // CrossShape inherits from sf::Drawable
-        drawables.push_back(&wp);
-    }
+    drawables.push_back(&waypointMarks);
+    drawables.push_back(&waypointPathLines);
     return drawables;
 }
