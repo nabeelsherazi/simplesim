@@ -38,8 +38,9 @@ int main(int argc, char* argv[]) {
     int errorDisplayHandle = debugText.addFixedTextLine("x error: 0, y error: 0");
     int pidCommandDisplayHandle =
         debugText.addFixedTextLine("(kp) * error + (kd) * (error - lastError) / dt = command");
+    int windDisplayHandle = debugText.addFixedTextLine("current wind: (0, 0)");
 
-    DroneOptions droneOptions{.controlMode = DroneOptions::ControlMode::Velocity};
+    DroneOptions droneOptions{.controlMode = DroneOptions::ControlMode::Velocity, .windIntensity = 50.0f};
     std::shared_ptr<Drone> drone = std::make_shared<Drone>("drone_node", droneOptions);
     {
         ManagedSprite droneSprite;
@@ -49,8 +50,8 @@ int main(int argc, char* argv[]) {
         drone->setSprite(std::move(droneSprite));
     }
 
-    std::shared_ptr<Controller> controller =
-        std::make_shared<Controller>("controller_node", sf::Vector2f(300.f, 200.f));
+    ControllerOptions controllerOptions;
+    std::shared_ptr<Controller> controller = std::make_shared<Controller>("controller_node", controllerOptions);
 
     Visuals visuals;
 
@@ -66,7 +67,6 @@ int main(int argc, char* argv[]) {
     executor.add_node(drone);
     executor.add_node(controller);
 
-    std::vector<CrossShape> waypointMarks{};
     std::vector<const Renderable*> renderableEntities{drone.get(), controller.get()};
 
     sf::Clock clock;
@@ -92,7 +92,6 @@ int main(int argc, char* argv[]) {
                     msg.x = event.mouseButton.x;
                     msg.y = event.mouseButton.y;
                     waypointPublisher->publish(msg);
-                    waypointMarks.push_back(CrossShape(sf::Vector2f(event.mouseButton.x, event.mouseButton.y), 12.5f));
                 }
             }
         }
@@ -119,6 +118,8 @@ int main(int argc, char* argv[]) {
                         controller->kp_position, controller->positionError.x, controller->positionError.y,
                         controller->kd_position, controller->deltaError.x, controller->deltaError.y,
                         controller->velocityCommand.x, controller->velocityCommand.y));
+        debugText.updateFixedTextLine(
+            windDisplayHandle, fmt::format("wind: ({:.1f}, {:.1f})", drone->currentWind.x, drone->currentWind.y));
         // debugText.updateFixedTextLine(velocityDisplayHandle, fmt::format("x
         // velocity: {:.2f}, y velocity: {:.2f}", commandedVelocity.x,
         // commandedVelocity.y));

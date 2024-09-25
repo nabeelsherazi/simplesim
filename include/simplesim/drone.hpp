@@ -3,6 +3,7 @@
 #include <SFML/Graphics.hpp>
 #include <filesystem>
 #include <geometry_msgs/msg/vector3.hpp>
+#include <random>
 #include <rclcpp/rclcpp.hpp>
 
 #include "simplesim/managed_sprite.hpp"
@@ -18,6 +19,7 @@ struct DroneOptions {
 
     sf::Vector2f initialPosition = {0.0f, 0.0f};
     DroneOptions::ControlMode controlMode = DroneOptions::ControlMode::Acceleration;
+    float windIntensity = 0.0f;
 };
 
 class Drone : public rclcpp::Node, public Renderable {
@@ -45,6 +47,8 @@ class Drone : public rclcpp::Node, public Renderable {
 
     std::vector<const sf::Drawable*> getDrawables() const override;
 
+    sf::Vector2f currentWind;
+
    private:
     ManagedSprite sprite;
 
@@ -53,6 +57,10 @@ class Drone : public rclcpp::Node, public Renderable {
     sf::Vector2f accelerationCommand;
     sf::Vector2f currentVelocity;
     sf::Vector2f currentPosition;
+
+    std::random_device randomDevice;
+    std::mt19937 randomGenerator;
+    std::uniform_real_distribution<> dist;
 
     rclcpp::Publisher<geometry_msgs::msg::Vector3>::SharedPtr position_publisher;
     rclcpp::Subscription<geometry_msgs::msg::Vector3>::SharedPtr accelerationCommandSubscriber;

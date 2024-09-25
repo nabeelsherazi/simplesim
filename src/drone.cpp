@@ -1,6 +1,7 @@
 #include "simplesim/drone.hpp"
 #include <filesystem>
 #include <geometry_msgs/msg/vector3.hpp>
+#include <random>
 #include <utility>
 
 Drone::Drone(std::string node_name, DroneOptions& options) : Node(node_name) {
@@ -21,6 +22,9 @@ Drone::Drone(std::string node_name, DroneOptions& options) : Node(node_name) {
             RCLCPP_ERROR(this->get_logger(), "Unknown control mode requested");
             throw std::runtime_error("Unknown control mode requested");
     }
+    // Noise generator
+    randomGenerator = std::mt19937(randomDevice());
+    dist = std::uniform_real_distribution<>(-options.windIntensity, options.windIntensity);
 };
 
 Drone::~Drone() {};
@@ -42,10 +46,16 @@ void Drone::setVelocityCommand(const geometry_msgs::msg::Vector3::SharedPtr msg)
 }
 
 void Drone::tick(const sf::Time dt) {
+    // Update current wind speed as a random walk
+    currentWind.x += dist(randomGenerator);
+    currentWind.y += dist(randomGenerator);
+    this->currentVelocity += dt.asSeconds() * this->currentWind;
+
+    // In acceleration control mode, integrate for new velocity (otherwise receive new velocity directly)
     if (this->controlMode == DroneOptions::ControlMode::Acceleration) {
         this->currentVelocity += dt.asSeconds() * this->accelerationCommand;
     }
-    // Calculate ground truth position
+    // Tick kinematics
     this->currentPosition += dt.asSeconds() * this->currentVelocity;
     // Update sprite
     this->sprite.setPosition(this->currentPosition);
