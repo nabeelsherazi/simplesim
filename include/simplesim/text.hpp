@@ -1,19 +1,21 @@
 #pragma once
 
-#include <vector>
-#include <utility>
-#include <filesystem>
+#include <SFML/Graphics.hpp>
 #include <algorithm>
+#include <filesystem>
+#include <range/v3/view/concat.hpp>
 #include <range/v3/view/join.hpp>
 #include <range/v3/view/transform.hpp>
-#include <range/v3/view/concat.hpp>
-#include <SFML/Graphics.hpp>
+#include <utility>
+#include <vector>
 
 #define OPEN_SANS_REGULAR "/usr/share/fonts/truetype/open-sans/OpenSans-Regular.ttf"
 
 class DebugTextConsole {
-public:
-    DebugTextConsole(float textSizePixels = 12.0, float padding = 3.0, sf::Time updateGranularity = sf::milliseconds(60)) : textSizePixels(textSizePixels), padding(padding), updateGranularity(updateGranularity) {};
+   public:
+    DebugTextConsole(float textSizePixels = 12.0,
+                     float padding = 3.0,
+                     sf::Time updateGranularity = sf::milliseconds(60));
 
     bool loadFont(std::filesystem::path filename);
 
@@ -33,9 +35,15 @@ public:
 
     void tick(sf::Time dt);
 
-    auto drawables();
+    /// @brief Get an iterable view of all sf::Text objects
+    /// @return ranges::view of all sf::Text objects
+    auto drawables() {
+        return ranges::views::concat(
+            fixedTextLines,
+            temporaryTextLines | ranges::views::transform([](auto& p) -> sf::Text& { return p.first; }));
+    }
 
-private:
+   private:
     sf::Font font;
     float textSizePixels;
     float endOfFixedTextLineHeightPixels;

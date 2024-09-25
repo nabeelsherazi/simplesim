@@ -3,11 +3,9 @@
 #include <SFML/Graphics.hpp>
 
 class CrossShape : public sf::Drawable {
-public:
+   public:
     // Constructor takes the position (center of the "X") and size (length of the arms)
-    CrossShape(sf::Vector2f position, float size)
-        : position(position), size(size)
-    {
+    CrossShape(sf::Vector2f position, float size) : position(position), size(size) {
         vertices.setPrimitiveType(sf::Lines);
         // 4 vertices for two lines
         vertices.resize(4);
@@ -25,12 +23,11 @@ public:
         vertices[3].color = sf::Color::Black;
     }
 
-    virtual void draw(sf::RenderTarget& target, sf::RenderStates states) const override
-    {
+    virtual void draw(sf::RenderTarget& target, sf::RenderStates states) const override {
         target.draw(vertices, states);
     }
 
-private:
+   private:
     sf::Vector2f position;
     float size;
     sf::VertexArray vertices;

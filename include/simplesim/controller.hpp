@@ -1,21 +1,35 @@
 #pragma once
 
-#include <vector>
-#include <filesystem>
-#include <rclcpp/rclcpp.hpp>
-#include <geometry_msgs/msg/vector3.hpp>
 #include <SFML/Graphics.hpp>
 #include <cmath>
+#include <filesystem>
+#include <geometry_msgs/msg/vector3.hpp>
 #include <memory>
+#include <rclcpp/rclcpp.hpp>
+#include <vector>
+#include "simplesim/renderable.hpp"
+#include "simplesim/shapes.hpp"
 #include "simplesim/utils.hpp"
 
 using namespace std::placeholders;
 
+struct PidCoefficients {
+    float kp;
+    float ki;
+    float kd;
+};
 
-class Controller : public rclcpp::Node {
+struct ControllerOptions {
+    PidCoefficients positionControllerTune = {.kp = 2.0f, .kd = -0.05f};
+    PidCoefficients velocityControllerTune = {.kp = 0.5f, .kd = -0.05f};
+    sf::Vector2f initialPosition = {0.0f, 0.0f};
+    float waypointEpsilon = 10.0f;
+    float maxAcceleration = 10.0f;
+};
 
-public:
-    Controller(std::string node_name, sf::Vector2f initialPosition);
+class Controller : public rclcpp::Node, public Renderable {
+   public:
+    Controller(std::string node_name, ControllerOptions& options);
 
     void parameterCallback(const rclcpp::Parameter& param);
 
@@ -24,6 +38,10 @@ public:
     void tick(sf::Time dt);
 
     void reset();
+
+    std::vector<const sf::Drawable*> getDrawables() const override;
+
+    ControllerOptions options;
 
     float waypointEpsilon;
 
@@ -38,6 +56,7 @@ public:
     float maxAcceleration;
 
     std::vector<sf::Vector2f> waypointList;
+    std::vector<CrossShape> waypointMarks;
 
     sf::Vector2f currentPosition;
     sf::Vector2f currentVelocity;
@@ -47,8 +66,7 @@ public:
     sf::Vector2f deltaError;
     sf::Vector2f velocityCommand;
 
-private:
-
+   private:
     rclcpp::Subscription<geometry_msgs::msg::Vector3>::SharedPtr positionSubscriber;
     rclcpp::Subscription<geometry_msgs::msg::Vector3>::SharedPtr velocitySubscriber;
     rclcpp::Subscription<geometry_msgs::msg::Vector3>::SharedPtr waypointSubscriber;

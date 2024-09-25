@@ -1,21 +1,23 @@
-#include <vector>
-#include <utility>
-#include <filesystem>
-#include <algorithm>
-#include <range/v3/view/join.hpp>
-#include <range/v3/view/transform.hpp>
-#include <range/v3/view/concat.hpp>
-#include <SFML/Graphics.hpp>
-
 #include "simplesim/text.hpp"
 
-DebugTextConsole::DebugTextConsole(float textSizePixels, float padding, sf::Time updateGranularity) : textSizePixels(textSizePixels), padding(padding), updateGranularity(updateGranularity) {};
+#include <algorithm>
+#include <filesystem>
+#include <utility>
+#include <vector>
+
+#include <SFML/Graphics.hpp>
+#include <range/v3/view/concat.hpp>
+#include <range/v3/view/join.hpp>
+#include <range/v3/view/transform.hpp>
+
+DebugTextConsole::DebugTextConsole(float textSizePixels, float padding, sf::Time updateGranularity)
+    : textSizePixels(textSizePixels), padding(padding), updateGranularity(updateGranularity) {};
 
 bool DebugTextConsole::loadFont(std::filesystem::path filename) {
     return this->font.loadFromFile(filename);
 }
 
-void DebugTextConsole::setConsoleTextSize(float pixels, float padding = 0.0) {
+void DebugTextConsole::setConsoleTextSize(float pixels, float padding) {
     this->textSizePixels = pixels;
     this->padding = padding;
 }
@@ -34,12 +36,12 @@ int DebugTextConsole::addFixedTextLine(std::string initialText) {
     return insertedToIndex;
 }
 
-void DebugTextConsole::updateFixedTextLine(int index, std::string newText, sf::Color newColor = sf::Color::Black) {
+void DebugTextConsole::updateFixedTextLine(int index, std::string newText, sf::Color newColor) {
     this->fixedTextLines[index].setString(newText);
     this->fixedTextLines[index].setFillColor(newColor);
 }
 
-void DebugTextConsole::addTemporaryTextLine(std::string text, sf::Time duration, sf::Color color = sf::Color::Black) {
+void DebugTextConsole::addTemporaryTextLine(std::string text, sf::Time duration, sf::Color color) {
     sf::Text textLine;
     textLine.setFont(this->font);
     textLine.setCharacterSize(this->textSizePixels);
@@ -54,34 +56,24 @@ void DebugTextConsole::updateTextLinePositions() {
         this->fixedTextLines[i].setPosition(0, i * (textSizePixels + padding));
     }
     for (size_t i = 0; i < this->temporaryTextLines.size(); i++) {
-        this->temporaryTextLines[i].first.setPosition(0, endOfFixedTextLineHeightPixels + padding + (i * (textSizePixels + padding)));
+        this->temporaryTextLines[i].first.setPosition(
+            0, endOfFixedTextLineHeightPixels + padding + (i * (textSizePixels + padding)));
     }
 }
 
 void DebugTextConsole::tick(sf::Time dt) {
-
     this->timeSinceLastUpdate += dt;
 
     if (timeSinceLastUpdate >= updateGranularity) {
-        this->temporaryTextLines.erase(
-            std::remove_if(temporaryTextLines.begin(), temporaryTextLines.end(), [dt](std::pair<sf::Text, sf::Time>& temporaryLine) {
-            temporaryLine.second -= dt;
-            return temporaryLine.second <= sf::Time::Zero;  
-            }),
-            temporaryTextLines.end()
-        );
+        this->temporaryTextLines.erase(std::remove_if(temporaryTextLines.begin(), temporaryTextLines.end(),
+                                                      [dt](std::pair<sf::Text, sf::Time>& temporaryLine) {
+                                                          temporaryLine.second -= dt;
+                                                          return temporaryLine.second <= sf::Time::Zero;
+                                                      }),
+                                       temporaryTextLines.end());
 
         this->updateTextLinePositions();
 
         this->timeSinceLastUpdate = sf::Time::Zero;
     }
-
-}
-
-auto DebugTextConsole::drawables() {
-    // Create a range for temporaryTextLines that extracts sf::Text from each pair
-    auto tempTextRange = temporaryTextLines | ranges::views::transform([](auto& pair) -> sf::Text& {return pair.first;});
-
-    // Join fixedTextLines and tempTextRange into a single range
-    return ranges::views::concat(fixedTextLines, tempTextRange);
 }

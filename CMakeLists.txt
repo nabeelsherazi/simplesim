@@ -15,7 +15,7 @@ find_package(fmt REQUIRED)
 # find_package(magic_enum CONFIG REQUIRED)
 find_package(SFML COMPONENTS graphics system window)
 
-add_executable(simplesim_node src/main.cpp src/drone.cpp src/controller.cpp)
+add_executable(simplesim_node src/main.cpp src/drone.cpp src/controller.cpp src/text.cpp src/visuals.cpp src/managed_sprite.cpp)
 add_executable(simplesim_node::exe ALIAS simplesim_node)
 
 target_include_directories(simplesim_node PUBLIC
