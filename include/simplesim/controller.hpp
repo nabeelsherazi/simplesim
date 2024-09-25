@@ -25,6 +25,7 @@ struct ControllerOptions {
     sf::Vector2f initialPosition = {0.0f, 0.0f};
     float waypointEpsilon = 25.0f;
     float maxAcceleration = 10.0f;
+    float lookaheadDistance = 100.0f;
 };
 
 class Controller : public rclcpp::Node, public Renderable {
@@ -58,10 +59,12 @@ class Controller : public rclcpp::Node, public Renderable {
     std::vector<sf::Vector2f> waypointList;
     CrossShapeArray waypointMarks;
     sf::VertexArray waypointPathLines;
+    sf::CircleShape lookaheadCircle;
 
     sf::Vector2f currentPosition;
     sf::Vector2f currentVelocity;
     int currentWaypointIndex = 0;
+    sf::Vector2f currentSetpoint;
 
     sf::Vector2f positionError;
     sf::Vector2f deltaError;

@@ -17,8 +17,8 @@ struct DroneOptions {
     /// or acceleration command)
     enum class ControlMode { Velocity, Acceleration };
 
-    sf::Vector2f initialPosition = {0.0f, 0.0f};
     DroneOptions::ControlMode controlMode = DroneOptions::ControlMode::Acceleration;
+    sf::Vector2f initialPosition = {0.0f, 0.0f};
     float windIntensity = 0.0f;
 };
 

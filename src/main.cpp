@@ -1,13 +1,12 @@
+#include <filesystem>
+#include <memory>
+#include <vector>
+
 #include <fmt/core.h>
 #include <SFML/Graphics.hpp>
-#include <filesystem>
-#include <geometry_msgs/msg/pose2_d.hpp>
 #include <geometry_msgs/msg/vector3.hpp>
-#include <iostream>
 #include <rclcpp/rclcpp.hpp>
-#include <sstream>
 #include <std_srvs/srv/trigger.hpp>
-#include <string>
 
 #include "simplesim/controller.hpp"
 #include "simplesim/drone.hpp"
@@ -40,7 +39,9 @@ int main(int argc, char* argv[]) {
         debugText.addFixedTextLine("(kp) * error + (kd) * (error - lastError) / dt = command");
     int windDisplayHandle = debugText.addFixedTextLine("current wind: (0, 0)");
 
-    DroneOptions droneOptions{.controlMode = DroneOptions::ControlMode::Velocity, .windIntensity = 50.0f};
+    DroneOptions droneOptions{.controlMode = DroneOptions::ControlMode::Velocity,
+                              .initialPosition = {320.0f, 240.0f},
+                              .windIntensity = 50.0f};
     std::shared_ptr<Drone> drone = std::make_shared<Drone>("drone_node", droneOptions);
     {
         ManagedSprite droneSprite;
@@ -67,7 +68,7 @@ int main(int argc, char* argv[]) {
     executor.add_node(drone);
     executor.add_node(controller);
 
-    std::vector<const Renderable*> renderableEntities{drone.get(), controller.get()};
+    std::vector<const Renderable*> renderableEntities{controller.get(), drone.get()};
 
     sf::Clock clock;
 

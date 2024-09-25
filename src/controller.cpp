@@ -14,8 +14,10 @@ Controller::Controller(std::string node_name, ControllerOptions& options) : Node
 
     // World input subscribers
     this->positionSubscriber = this->create_subscription<geometry_msgs::msg::Vector3>(
-        "/simplesim/drone/position", 10,
-        [this](geometry_msgs::msg::Vector3::SharedPtr msg) { this->currentPosition = sf::Vector2f(msg->x, msg->y); });
+        "/simplesim/drone/position", 10, [this](geometry_msgs::msg::Vector3::SharedPtr msg) {
+            this->currentPosition = sf::Vector2f(msg->x, msg->y);
+            this->lookaheadCircle.setPosition(this->currentPosition);
+        });
 
     // Trajectory input subscribers
     this->waypointSubscriber = this->create_subscription<geometry_msgs::msg::Vector3>(
@@ -39,6 +41,12 @@ Controller::Controller(std::string node_name, ControllerOptions& options) : Node
 
     // Configure drawables
     waypointPathLines.setPrimitiveType(sf::LinesStrip);
+    lookaheadCircle.setOrigin({options.lookaheadDistance, options.lookaheadDistance});
+    lookaheadCircle.setRadius(options.lookaheadDistance);
+    lookaheadCircle.setPosition(options.initialPosition);
+    lookaheadCircle.setFillColor(sf::Color::Transparent);
+    lookaheadCircle.setOutlineThickness(1.0f);
+    lookaheadCircle.setOutlineColor(sf::Color::Black);
 };
 
 void Controller::parameterCallback(const rclcpp::Parameter& param) {
@@ -58,11 +66,15 @@ void Controller::addWaypoint(sf::Vector2f wpt) {
 
 void Controller::tick(sf::Time dt) {
     if (currentWaypointIndex < waypointList.size()) {
+        // If there's a waypoint after this one, use pure pursuit
+        if (currentWaypointIndex + 1 < waypointList.size()) {
+            auto nextWaypointPosition = waypointList[currentWaypointIndex + 1];
+        }
         // Calculate velocity command
-        auto nextWaypointPosition = waypointList[currentWaypointIndex];
+        currentSetpoint = waypointList[currentWaypointIndex];
         // Cascade PID controller
         // Outer loop: position error -> desired velocity
-        positionError = nextWaypointPosition - currentPosition;
+        positionError = currentSetpoint - currentPosition;
         deltaError = (positionError - lastPositionError) / dt.asSeconds();
         velocityCommand = kp_position * positionError + kd_position * deltaError;
         lastPositionError = positionError;
@@ -90,7 +102,7 @@ void Controller::tick(sf::Time dt) {
         this->velocityCommandPublisher->publish(msg);
 
         // Move to next waypoint if we're close enough to the current one
-        if (norm(nextWaypointPosition - currentPosition) <= waypointEpsilon &&
+        if (norm(currentSetpoint - currentPosition) <= waypointEpsilon &&
             currentWaypointIndex != waypointList.size() - 1) {
             this->currentWaypointIndex++;
         }
@@ -109,5 +121,6 @@ std::vector<const sf::Drawable*> Controller::getDrawables() const {
     std::vector<const sf::Drawable*> drawables;
     drawables.push_back(&waypointMarks);
     drawables.push_back(&waypointPathLines);
+    drawables.push_back(&lookaheadCircle);
     return drawables;
 }
