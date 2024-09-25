@@ -1,0 +1,4 @@
+BasedOnStyle: Chromium
+ColumnLimit: 120
+InsertBraces: true
+IndentWidth: 4
