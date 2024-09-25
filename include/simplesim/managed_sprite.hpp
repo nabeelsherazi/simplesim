@@ -1,6 +1,7 @@
 #pragma once
 
 #include <SFML/Graphics.hpp>
+#include <filesystem>
 
 class ManagedSprite : public sf::Sprite {
    public:
