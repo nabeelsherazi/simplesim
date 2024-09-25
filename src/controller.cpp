@@ -9,6 +9,7 @@ Controller::Controller(std::string node_name, ControllerOptions& options) : Node
     this->options = options;
     this->kp_position = options.positionControllerTune.kp;
     this->kd_position = options.positionControllerTune.kd;
+    this->lookaheadDistance = options.lookaheadDistance;
     this->waypointEpsilon = options.waypointEpsilon;
     this->currentPosition = options.initialPosition;
 
@@ -47,6 +48,9 @@ Controller::Controller(std::string node_name, ControllerOptions& options) : Node
     lookaheadCircle.setFillColor(sf::Color::Transparent);
     lookaheadCircle.setOutlineThickness(1.0f);
     lookaheadCircle.setOutlineColor(sf::Color::Black);
+    lookaheadPoint.setRadius(5.0f);
+    lookaheadPoint.setOrigin({5.0f, 5.0f});
+    lookaheadPoint.setFillColor(sf::Color::Red);
 };
 
 void Controller::parameterCallback(const rclcpp::Parameter& param) {
@@ -66,12 +70,29 @@ void Controller::addWaypoint(sf::Vector2f wpt) {
 
 void Controller::tick(sf::Time dt) {
     if (currentWaypointIndex < waypointList.size()) {
-        // If there's a waypoint after this one, use pure pursuit
-        if (currentWaypointIndex + 1 < waypointList.size()) {
-            auto nextWaypointPosition = waypointList[currentWaypointIndex + 1];
-        }
-        // Calculate velocity command
+        // Setpoint is next waypoint
         currentSetpoint = waypointList[currentWaypointIndex];
+        // If there's a waypoint after this one, use pure pursuit instead
+        if (currentWaypointIndex + 1 < waypointList.size()) {
+            bool exitedLookaheadRadius = false;
+            // First interpolate from current position to next waypoint, after that between next waypoint and next+1
+            // waypoint
+            int i = 0;
+            auto lastWaypoint = this->currentPosition;
+            while (currentWaypointIndex + i < waypointList.size() && !exitedLookaheadRadius) {
+                // Walk between the waypoints until we leave the lookahead circle
+                for (float t = 0.0f; t <= 1.0f; t += 0.05f) {
+                    currentSetpoint = lastWaypoint + (t * (waypointList[currentWaypointIndex + i] - lastWaypoint));
+                    if (norm(currentSetpoint - currentPosition) >= lookaheadDistance) {
+                        exitedLookaheadRadius = true;
+                        break;
+                    }
+                }
+                lastWaypoint = waypointList[currentWaypointIndex + i];
+                i += 1;
+            }
+        }
+        lookaheadPoint.setPosition(currentSetpoint);
         // Cascade PID controller
         // Outer loop: position error -> desired velocity
         positionError = currentSetpoint - currentPosition;
@@ -96,25 +117,31 @@ void Controller::tick(sf::Time dt) {
         // msg.y = commandedAcceleration.y;
         // this->accelerationCommandPublisher->publish(msg);
 
-        geometry_msgs::msg::Vector3 msg;
-        msg.x = velocityCommand.x;
-        msg.y = velocityCommand.y;
-        this->velocityCommandPublisher->publish(msg);
-
         // Move to next waypoint if we're close enough to the current one
-        if (norm(currentSetpoint - currentPosition) <= waypointEpsilon &&
+        if (norm(waypointList[currentWaypointIndex] - currentPosition) <= waypointEpsilon &&
             currentWaypointIndex != waypointList.size() - 1) {
             this->currentWaypointIndex++;
+            RCLCPP_INFO(this->get_logger(), "Moving to waypoint %i", currentWaypointIndex);
         }
+
     }
+    geometry_msgs::msg::Vector3 msg;
+    msg.x = velocityCommand.x;
+    msg.y = velocityCommand.y;
+    this->velocityCommandPublisher->publish(msg);
+
 }
 
 void Controller::reset() {
+    auto zero = sf::Vector2f(0.0f, 0.0f);
     this->currentWaypointIndex = 0;
     this->waypointList.clear();
-    this->lastPositionError = sf::Vector2f(0.0f, 0.0f);
-    this->lastVelocityError = sf::Vector2f(0.0f, 0.0f);
-    RCLCPP_INFO(this->get_logger(), "Controller reset");
+    this->waypointMarks.clear();
+    this->waypointPathLines.clear();
+    this->lastPositionError = zero;
+    this->lastVelocityError = zero;
+    this->lookaheadPoint.setPosition(zero);
+    RCLCPP_INFO(this->get_logger(), "Reset controller");
 }
 
 std::vector<const sf::Drawable*> Controller::getDrawables() const {
@@ -122,5 +149,6 @@ std::vector<const sf::Drawable*> Controller::getDrawables() const {
     drawables.push_back(&waypointMarks);
     drawables.push_back(&waypointPathLines);
     drawables.push_back(&lookaheadCircle);
+    drawables.push_back(&lookaheadPoint);
     return drawables;
 }

@@ -34,6 +34,7 @@ int main(int argc, char* argv[]) {
     DebugTextConsole debugText;
     debugText.loadFont(OPEN_SANS_REGULAR);
     int fpsDisplayHandle = debugText.addFixedTextLine("0 fps");
+    int waypointDisplayHandle = debugText.addFixedTextLine("current waypoint: {}");
     int errorDisplayHandle = debugText.addFixedTextLine("x error: 0, y error: 0");
     int pidCommandDisplayHandle =
         debugText.addFixedTextLine("(kp) * error + (kd) * (error - lastError) / dt = command");
@@ -109,9 +110,11 @@ int main(int argc, char* argv[]) {
 
         // Debug text
         debugText.updateFixedTextLine(fpsDisplayHandle, fmt::format("{:.1f} fps", 1 / dt.asSeconds()));
+        debugText.updateFixedTextLine(waypointDisplayHandle,
+                                      fmt::format("current waypoint: {}", controller->currentWaypointIndex));
         debugText.updateFixedTextLine(
             errorDisplayHandle,
-            fmt::format("x error: {:.2f}, y error: {:.2f}", controller->positionError.x, controller->positionError.y));
+            fmt::format("x error: {:.2f}, y error: {:.2f}, norm: {:.2f}", controller->positionError.x, controller->positionError.y, norm(controller->positionError)));
         debugText.updateFixedTextLine(
             pidCommandDisplayHandle,
             fmt::format("kp:={:.2f} * ({:.2f},{:.2f}) + kd:{:.2f} * "

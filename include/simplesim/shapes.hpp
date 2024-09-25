@@ -21,6 +21,10 @@ class CrossShapeArray : public sf::Drawable {
         target.draw(vertices, states);
     }
 
+    void clear() {
+        this->vertices.clear();
+    }
+
    private:
     sf::VertexArray vertices;
 };
