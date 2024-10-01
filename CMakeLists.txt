@@ -10,10 +10,11 @@ find_package(ament_cmake REQUIRED)
 find_package(rclcpp REQUIRED)
 find_package(geometry_msgs REQUIRED)
 find_package(std_srvs REQUIRED)
-find_package(range-v3 REQUIRED)
 find_package(fmt REQUIRED)
-# find_package(magic_enum CONFIG REQUIRED)
-find_package(SFML COMPONENTS graphics system window)
+find_package(nav_msgs REQUIRED)
+find_package(SFML REQUIRED COMPONENTS graphics system window)
+find_package(tf2 REQUIRED)
+find_package(tf2_ros REQUIRED)
 
 add_executable(simplesim_node src/main.cpp src/drone.cpp src/controller.cpp src/text.cpp src/visuals.cpp src/managed_sprite.cpp)
 add_executable(simplesim_node::exe ALIAS simplesim_node)
@@ -26,15 +27,19 @@ ament_target_dependencies(simplesim_node PUBLIC
     rclcpp
     geometry_msgs
     std_srvs
+    nav_msgs
+    tf2
+    tf2_ros
     )
 
-target_link_libraries(simplesim_node PUBLIC sfml-graphics sfml-system sfml-window range-v3 fmt)
+target_link_libraries(simplesim_node PUBLIC sfml-graphics sfml-system sfml-window fmt)
   
 target_compile_features(simplesim_node PUBLIC c_std_99 cxx_std_17)  # Require C99 and C++17
 
 # Pass the project name as a compile definition
 target_compile_definitions(simplesim_node PRIVATE PROJECT_NAME="${PROJECT_NAME}")
 
+target_precompile_headers(simplesim_node PRIVATE $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include/simplesim/pch.hpp>)
 # Copy data files
 file(COPY "${CMAKE_SOURCE_DIR}/data/sprites" DESTINATION "${CMAKE_BINARY_DIR}/data")
 
