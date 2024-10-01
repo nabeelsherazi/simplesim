@@ -1,6 +1,9 @@
 #include "simplesim/controller.hpp"
+
 #include <SFML/Graphics.hpp>
+#include <geometry_msgs/msg/vector3.hpp>
 #include <rclcpp/rclcpp.hpp>
+
 #include "simplesim/renderable.hpp"
 #include "simplesim/utils.hpp"
 
@@ -9,6 +12,8 @@ Controller::Controller(std::string node_name, ControllerOptions& options) : Node
     this->options = options;
     this->kp_position = options.positionControllerTune.kp;
     this->kd_position = options.positionControllerTune.kd;
+    this->kp_velocity = options.velocityControllerTune.kp;
+    this->kd_velocity = options.velocityControllerTune.kd;
     this->lookaheadDistance = options.lookaheadDistance;
     this->waypointEpsilon = options.waypointEpsilon;
     this->currentPosition = options.initialPosition;
@@ -19,6 +24,10 @@ Controller::Controller(std::string node_name, ControllerOptions& options) : Node
             this->currentPosition = sf::Vector2f(msg->x, msg->y);
             this->lookaheadCircle.setPosition(this->currentPosition);
         });
+
+    this->velocitySubscriber = this->create_subscription<geometry_msgs::msg::Vector3>(
+        "/simplesim/drone/velocity", 10,
+        [this](geometry_msgs::msg::Vector3::SharedPtr msg) { this->currentVelocity = sf::Vector2f(msg->x, msg->y); });
 
     // Trajectory input subscribers
     this->waypointSubscriber = this->create_subscription<geometry_msgs::msg::Vector3>(
@@ -59,7 +68,7 @@ void Controller::parameterCallback(const rclcpp::Parameter& param) {
     } else if (param.get_name() == "kd_position") {
         this->kd_position = static_cast<float>(param.as_double());
     }
-    RCLCPP_INFO(this->get_logger(), "Parameter %s updated", param.get_name().c_str());
+    RCLCPP_INFO(this->get_logger(), "Parameter %s updated :)", param.get_name().c_str());
 }
 
 void Controller::addWaypoint(sf::Vector2f wpt) {
@@ -73,7 +82,7 @@ void Controller::tick(sf::Time dt) {
         // Setpoint is next waypoint
         currentSetpoint = waypointList[currentWaypointIndex];
         // If there's a waypoint after this one, use pure pursuit instead
-        if (currentWaypointIndex + 1 < waypointList.size()) {
+        if (currentWaypointIndex + 1 < waypointList.size() && this->options.usePurePursuit) {
             bool exitedLookaheadRadius = false;
             // First interpolate from current position to next waypoint, after that between next waypoint and next+1
             // waypoint
@@ -83,7 +92,7 @@ void Controller::tick(sf::Time dt) {
                 // Walk between the waypoints until we leave the lookahead circle
                 for (float t = 0.0f; t <= 1.0f; t += 0.05f) {
                     currentSetpoint = lastWaypoint + (t * (waypointList[currentWaypointIndex + i] - lastWaypoint));
-                    if (norm(currentSetpoint - currentPosition) >= lookaheadDistance) {
+                    if (simplesim::norm(currentSetpoint - currentPosition) >= lookaheadDistance) {
                         exitedLookaheadRadius = true;
                         break;
                     }
@@ -96,40 +105,32 @@ void Controller::tick(sf::Time dt) {
         // Cascade PID controller
         // Outer loop: position error -> desired velocity
         positionError = currentSetpoint - currentPosition;
-        deltaError = (positionError - lastPositionError) / dt.asSeconds();
-        velocityCommand = kp_position * positionError + kd_position * deltaError;
+        deltaPositionError = (positionError - lastPositionError) / dt.asSeconds();
+        velocityCommand = kp_position * positionError + kd_position * deltaPositionError;
         lastPositionError = positionError;
 
         // Inner loop: velocity error -> desired acceleration
-        // auto velocityError = velocityCommand - currentVelocity;
-        // auto commandedAcceleration = kp_velocity * velocityError + kd_velocity *
-        // (velocityError - lastVelocityError) / dt.asSeconds();
-        // // Clamp acceleration
-        // auto accelerationNorm = norm(commandedAcceleration);
+        velocityError = velocityCommand - currentVelocity;
+        deltaVelocityError = (velocityError - lastVelocityError) / dt.asSeconds();
+        accelerationCommand = kp_velocity * velocityError;
+        lastVelocityError = velocityError;
+        // Clamp acceleration
+        auto accelerationNorm = simplesim::norm(accelerationCommand);
         // if (accelerationNorm > maxAcceleration) {
-        //     commandedAcceleration = commandedAcceleration / accelerationNorm *
-        //     maxAcceleration;
+        //     accelerationCommand = accelerationCommand / accelerationNorm * maxAcceleration;
         // }
 
-        // // Move based on commanded acceleration
-        // geometry_msgs::msg::Vector3 msg;
-        // msg.x = commandedAcceleration.x;
-        // msg.y = commandedAcceleration.y;
-        // this->accelerationCommandPublisher->publish(msg);
-
         // Move to next waypoint if we're close enough to the current one
-        if (norm(waypointList[currentWaypointIndex] - currentPosition) <= waypointEpsilon &&
+        if (simplesim::norm(waypointList[currentWaypointIndex] - currentPosition) <= waypointEpsilon &&
             currentWaypointIndex != waypointList.size() - 1) {
             this->currentWaypointIndex++;
             RCLCPP_INFO(this->get_logger(), "Moving to waypoint %i", currentWaypointIndex);
         }
-
     }
     geometry_msgs::msg::Vector3 msg;
-    msg.x = velocityCommand.x;
-    msg.y = velocityCommand.y;
-    this->velocityCommandPublisher->publish(msg);
-
+    msg.x = accelerationCommand.x;
+    msg.y = accelerationCommand.y;
+    this->accelerationCommandPublisher->publish(msg);
 }
 
 void Controller::reset() {

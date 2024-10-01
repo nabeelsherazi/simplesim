@@ -20,12 +20,28 @@ struct PidCoefficients {
 };
 
 struct ControllerOptions {
-    PidCoefficients positionControllerTune = {.kp = 2.0f, .kd = -0.05f};
-    PidCoefficients velocityControllerTune = {.kp = 0.5f, .kd = -0.05f};
+    /// @brief PID coefficients for the position controller
+    PidCoefficients positionControllerTune = {.kp = 3.0f, .kd = -0.30f};
+
+    /// @brief PID coefficients for the cascaded velocity controller
+    PidCoefficients velocityControllerTune = {.kp = 2.0f, .kd = -0.04f};
+
+    /// @brief Initial position reading for the controller
     sf::Vector2f initialPosition = {0.0f, 0.0f};
-    float waypointEpsilon = 50.0f;
+
+    /// @brief How close the drone's position needs to be to a waypoint before the control considers it reached
+    float waypointEpsilon = 20.0f;
+
+    /// @brief Maximum acceleration command the controller will issue
     float maxAcceleration = 10.0f;
+
+    /// @brief Whether or not to use pure pursuit
+    bool usePurePursuit = false;
+
+    /// @brief Lookahead distance for pure pursuit
     float lookaheadDistance = 50.0f;
+
+    /// @brief Resolution of lookahead search
     float lookaheadDistanceResolution = 5.0f;
 };
 
@@ -70,8 +86,11 @@ class Controller : public rclcpp::Node, public Renderable {
     sf::Vector2f currentSetpoint;
 
     sf::Vector2f positionError;
-    sf::Vector2f deltaError;
+    sf::Vector2f deltaPositionError;
+    sf::Vector2f velocityError;
+    sf::Vector2f deltaVelocityError;
     sf::Vector2f velocityCommand;
+    sf::Vector2f accelerationCommand;
 
    private:
     rclcpp::Subscription<geometry_msgs::msg::Vector3>::SharedPtr positionSubscriber;
