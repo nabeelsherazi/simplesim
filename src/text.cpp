@@ -4,11 +4,9 @@
 #include <filesystem>
 #include <utility>
 #include <vector>
+#include <string>
 
 #include <SFML/Graphics.hpp>
-#include <range/v3/view/concat.hpp>
-#include <range/v3/view/join.hpp>
-#include <range/v3/view/transform.hpp>
 
 DebugTextConsole::DebugTextConsole(float textSizePixels, float padding, sf::Time updateGranularity)
     : textSizePixels(textSizePixels), padding(padding), updateGranularity(updateGranularity) {};
@@ -31,7 +29,7 @@ int DebugTextConsole::addFixedTextLine(std::string initialText) {
 
     int insertedToIndex = this->fixedTextLines.size();
     this->fixedTextLines.push_back(textLine);
-    this->endOfFixedTextLineHeightPixels = this->textSizePixels + this->padding;
+    this->endOfFixedTextLineHeightPixels += textLine.getLocalBounds().height + this->padding;
 
     return insertedToIndex;
 }
@@ -66,8 +64,8 @@ void DebugTextConsole::tick(sf::Time dt) {
 
     if (timeSinceLastUpdate >= updateGranularity) {
         this->temporaryTextLines.erase(std::remove_if(temporaryTextLines.begin(), temporaryTextLines.end(),
-                                                      [dt](std::pair<sf::Text, sf::Time>& temporaryLine) {
-                                                          temporaryLine.second -= dt;
+                                                      [this](std::pair<sf::Text, sf::Time>& temporaryLine) {
+                                                          temporaryLine.second -= this->timeSinceLastUpdate;
                                                           return temporaryLine.second <= sf::Time::Zero;
                                                       }),
                                        temporaryTextLines.end());
