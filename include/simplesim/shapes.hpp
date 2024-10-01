@@ -2,9 +2,9 @@
 
 #include <SFML/Graphics.hpp>
 
+/// @brief Wraps an sf::VertexArray to make adding cross shapes easier
 class CrossShapeArray : public sf::Drawable {
    public:
-    // Constructor takes the position (center of the "X") and size (length of the arms)
     CrossShapeArray() { vertices.setPrimitiveType(sf::Lines); }
 
     void addCross(sf::Vector2f position, float size = 12.5f, sf::Color color = sf::Color::Black) {
