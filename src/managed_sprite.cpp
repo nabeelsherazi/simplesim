@@ -1,6 +1,9 @@
 #include "simplesim/managed_sprite.hpp"
 
 #include <filesystem>
+#include <utility>
+
+#include <SFML/Graphics.hpp>
 
 ManagedSprite::ManagedSprite(ManagedSprite&& other) noexcept
     : sf::Sprite(std::move(other)),

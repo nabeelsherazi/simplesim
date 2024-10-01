@@ -6,6 +6,7 @@
 
 #include "simplesim/renderable.hpp"
 
+/// @brief Renderer
 class Visuals {
    public:
     void update(const std::vector<const Renderable*>& renderables);
