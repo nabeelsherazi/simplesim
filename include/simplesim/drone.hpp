@@ -1,18 +1,18 @@
 #pragma once
 
-#include "simplesim/pch.hpp"
+#include <filesystem>
+#include <random>
 
 #include <tf2_ros/transform_broadcaster.h>
 #include <SFML/Graphics.hpp>
-#include <filesystem>
 #include <geometry_msgs/msg/transform_stamped.hpp>
 #include <geometry_msgs/msg/vector3.hpp>
 #include <nav_msgs/msg/odometry.hpp>
-#include <random>
 #include <rclcpp/rclcpp.hpp>
 
+#include "simplesim/interfaces/renderable.hpp"
+#include "simplesim/interfaces/resettable.hpp"
 #include "simplesim/managed_sprite.hpp"
-#include "simplesim/renderable.hpp"
 #include "simplesim/visuals.hpp"
 
 using namespace std::placeholders;
@@ -47,7 +47,7 @@ struct DroneOptions {
 };
 
 /// @brief Simulates vehicle dynamics given control and environment forces
-class Drone : public rclcpp::Node, public Renderable {
+class Drone : public Renderable, public Resettable {
    public:
     /// @brief Simulates vehicle dynamics given control and environment forces
     /// @param node_name The name of the node to launch under
@@ -77,7 +77,7 @@ class Drone : public rclcpp::Node, public Renderable {
     void publish();
 
     /// @brief Reset the simulation state to initial conditions
-    void reset();
+    bool reset() override;
 
     std::vector<const sf::Drawable*> getDrawables() const override;
 

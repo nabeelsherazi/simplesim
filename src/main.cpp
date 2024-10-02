@@ -12,6 +12,7 @@
 #include "simplesim/drone.hpp"
 #include "simplesim/managed_sprite.hpp"
 #include "simplesim/shapes.hpp"
+#include "simplesim/sim.hpp"
 #include "simplesim/text.hpp"
 #include "simplesim/visuals.hpp"
 
@@ -20,9 +21,7 @@ static const auto executableLocation = std::filesystem::canonical("/proc/self/ex
 int main(int argc, char* argv[]) {
     // ROS
     rclcpp::init(argc, argv);
-    rclcpp::Node::SharedPtr node = std::make_shared<rclcpp::Node>("simplesim");
     rclcpp::executors::SingleThreadedExecutor executor;
-    auto waypointPublisher = node->create_publisher<geometry_msgs::msg::Vector3>("/simplesim/drone/waypoint", 10);
 
     // SFML setup
     sf::ContextSettings settings;
@@ -64,19 +63,15 @@ int main(int argc, char* argv[]) {
     ControllerOptions controllerOptions;
     std::shared_ptr<Controller> controller = std::make_shared<Controller>("controller_node", controllerOptions);
 
+    // Simulation main node (reset service, manual waypoint publisher)
+    auto sim = std::make_shared<SimNode>("simplesim");
+    sim->AddToResetChain({controller.get(), drone.get()});
+
     // Renderer
     Visuals visuals;
     std::vector<const Renderable*> renderableEntities{controller.get(), drone.get()};
 
-    // auto resetService = node->create_service<std_srvs::srv::Trigger>(
-    //     "~/reset", [&](__attribute__((unused)) const std_srvs::srv::Trigger::Request::SharedPtr request,
-    //                    std_srvs::srv::Trigger::Response::SharedPtr response) {
-    //         drone->reset();
-    //         controller->reset();
-    //         response->success = true;
-    //     });
-
-    executor.add_node(node);
+    executor.add_node(sim);
     executor.add_node(drone);
     executor.add_node(controller);
 
@@ -99,10 +94,7 @@ int main(int argc, char* argv[]) {
             // Clicks set new waypoints
             if (event.type == sf::Event::MouseButtonReleased) {
                 if (event.mouseButton.button == sf::Mouse::Left) {
-                    geometry_msgs::msg::Vector3 msg;
-                    msg.x = event.mouseButton.x;
-                    msg.y = event.mouseButton.y;
-                    waypointPublisher->publish(msg);
+                    sim->publishManualWaypoint(event.mouseButton);
                 }
             }
         }

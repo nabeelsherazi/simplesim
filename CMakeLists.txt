@@ -16,7 +16,7 @@ find_package(SFML REQUIRED COMPONENTS graphics system window)
 find_package(tf2 REQUIRED)
 find_package(tf2_ros REQUIRED)
 
-add_executable(simplesim_node src/main.cpp src/drone.cpp src/controller.cpp src/text.cpp src/visuals.cpp src/managed_sprite.cpp)
+add_executable(simplesim_node src/main.cpp src/sim.cpp src/drone.cpp src/controller.cpp src/text.cpp src/visuals.cpp src/managed_sprite.cpp)
 add_executable(simplesim_node::exe ALIAS simplesim_node)
 
 target_include_directories(simplesim_node PUBLIC
@@ -39,7 +39,6 @@ target_compile_features(simplesim_node PUBLIC c_std_99 cxx_std_17)  # Require C9
 # Pass the project name as a compile definition
 target_compile_definitions(simplesim_node PRIVATE PROJECT_NAME="${PROJECT_NAME}")
 
-target_precompile_headers(simplesim_node PRIVATE $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include/simplesim/pch.hpp>)
 # Copy data files
 file(COPY "${CMAKE_SOURCE_DIR}/data/sprites" DESTINATION "${CMAKE_BINARY_DIR}/data")
 

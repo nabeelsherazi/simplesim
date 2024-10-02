@@ -1,7 +1,5 @@
 #include "simplesim/drone.hpp"
 
-#include "simplesim/pch.hpp"
-
 #include <filesystem>
 #include <memory>
 #include <random>
@@ -13,9 +11,10 @@
 #include <nav_msgs/msg/odometry.hpp>
 #include <rclcpp/rclcpp.hpp>
 
+#include "simplesim/interfaces/resettable.hpp"
 #include "simplesim/utils.hpp"
 
-Drone::Drone(std::string node_name, DroneOptions& options) : Node(node_name) {
+Drone::Drone(std::string node_name, DroneOptions& options) : Resettable(node_name), rclcpp::Node(node_name) {
     // Options
     this->options = options;
     // Initial position
@@ -130,9 +129,10 @@ void Drone::publish() {
     transformBroadcaster->sendTransform(transformStamped);
 }
 
-void Drone::reset() {
+bool Drone::reset() {
     this->currentPosition = {0, 0};
     this->currentVelocity = {0, 0};
     this->accelerationCommand = {0, 0};
     RCLCPP_INFO(this->get_logger(), "Reset drone");
+    return true;
 }

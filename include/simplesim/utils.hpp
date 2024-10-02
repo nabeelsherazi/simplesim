@@ -1,9 +1,9 @@
 #pragma once
 
-#include <SFML/Graphics.hpp>
 #include <cmath>
-#include <type_traits>
 #include <vector>
+
+#include <SFML/Graphics.hpp>
 
 namespace simplesim {
 

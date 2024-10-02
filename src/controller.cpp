@@ -4,10 +4,12 @@
 #include <geometry_msgs/msg/vector3.hpp>
 #include <rclcpp/rclcpp.hpp>
 
-#include "simplesim/renderable.hpp"
+#include "simplesim/interfaces/renderable.hpp"
+#include "simplesim/interfaces/resettable.hpp"
 #include "simplesim/utils.hpp"
 
-Controller::Controller(std::string node_name, ControllerOptions& options) : Node(node_name) {
+Controller::Controller(const std::string& node_name, ControllerOptions& options)
+    : Resettable(node_name), rclcpp::Node(node_name) {
     // Set options
     this->options = options;
     this->kp_position = options.positionControllerTune.kp;
@@ -133,7 +135,7 @@ void Controller::tick(sf::Time dt) {
     this->accelerationCommandPublisher->publish(msg);
 }
 
-void Controller::reset() {
+bool Controller::reset() {
     auto zero = sf::Vector2f(0.0f, 0.0f);
     this->currentWaypointIndex = 0;
     this->waypointList.clear();
@@ -143,6 +145,7 @@ void Controller::reset() {
     this->lastVelocityError = zero;
     this->lookaheadPoint.setPosition(zero);
     RCLCPP_INFO(this->get_logger(), "Reset controller");
+    return true;
 }
 
 std::vector<const sf::Drawable*> Controller::getDrawables() const {

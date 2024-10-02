@@ -4,7 +4,7 @@
 
 #include <SFML/Graphics.hpp>
 
-#include "simplesim/renderable.hpp"
+#include "simplesim/interfaces/renderable.hpp"
 
 /// @brief Renderer
 class Visuals {

@@ -2,6 +2,8 @@
 
 #include <vector>
 
+#include "simplesim/interfaces/renderable.hpp"
+
 void Visuals::update(const std::vector<const Renderable*>& renderables) {
     this->drawables.clear();
     for (const auto& renderable : renderables) {

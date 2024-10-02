@@ -1,13 +1,16 @@
 #pragma once
 
-#include <SFML/Graphics.hpp>
 #include <cmath>
 #include <filesystem>
-#include <geometry_msgs/msg/vector3.hpp>
 #include <memory>
-#include <rclcpp/rclcpp.hpp>
 #include <vector>
-#include "simplesim/renderable.hpp"
+
+#include <SFML/Graphics.hpp>
+#include <geometry_msgs/msg/vector3.hpp>
+#include <rclcpp/rclcpp.hpp>
+
+#include "simplesim/interfaces/renderable.hpp"
+#include "simplesim/interfaces/resettable.hpp"
 #include "simplesim/shapes.hpp"
 #include "simplesim/utils.hpp"
 
@@ -45,9 +48,9 @@ struct ControllerOptions {
     float lookaheadDistanceResolution = 5.0f;
 };
 
-class Controller : public rclcpp::Node, public Renderable {
+class Controller : public Renderable, public Resettable {
    public:
-    Controller(std::string node_name, ControllerOptions& options);
+    Controller(const std::string& node_name, ControllerOptions& options);
 
     void parameterCallback(const rclcpp::Parameter& param);
 
@@ -55,7 +58,7 @@ class Controller : public rclcpp::Node, public Renderable {
 
     void tick(sf::Time dt);
 
-    void reset();
+    bool reset() override;
 
     std::vector<const sf::Drawable*> getDrawables() const override;
 
