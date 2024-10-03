@@ -40,7 +40,7 @@ target_compile_features(simplesim_node PUBLIC c_std_99 cxx_std_17)  # Require C9
 target_compile_definitions(simplesim_node PRIVATE PROJECT_NAME="${PROJECT_NAME}")
 
 # Copy data files
-file(COPY "${CMAKE_SOURCE_DIR}/data/sprites" DESTINATION "${CMAKE_BINARY_DIR}/data")
+file(COPY "${CMAKE_SOURCE_DIR}/data" DESTINATION "${CMAKE_BINARY_DIR}")
 
 install(TARGETS simplesim_node
 DESTINATION lib/${PROJECT_NAME})
