@@ -31,7 +31,7 @@ int main(int argc, char* argv[]) {
 
     // Setup debug console
     DebugTextConsole debugText;
-    debugText.loadFont(OPEN_SANS_REGULAR);
+    debugText.loadFont(executableLocation / "data/fonts/OpenSans-Regular.ttf");
     int fpsDisplayHandle = debugText.addFixedTextLine("0 fps");
     int waypointDisplayHandle = debugText.addFixedTextLine("current waypoint: {}");
     int errorDisplayHandle = debugText.addFixedTextLine("x error: 0, y error: 0");

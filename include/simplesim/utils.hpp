@@ -3,7 +3,7 @@
 #include <cmath>
 #include <vector>
 
-#include <SFML/Graphics.hpp>
+#include <SFML/System/Vector2.hpp>
 
 namespace simplesim {
 
@@ -23,4 +23,4 @@ inline sf::Vector2f squareComponents(sf::Vector2f& vec) {
     return {vec.x * vec.x, vec.y * vec.y};
 }
 
-}
+}  // namespace simplesim

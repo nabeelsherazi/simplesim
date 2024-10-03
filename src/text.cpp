@@ -2,9 +2,9 @@
 
 #include <algorithm>
 #include <filesystem>
+#include <string>
 #include <utility>
 #include <vector>
-#include <string>
 
 #include <SFML/Graphics.hpp>
 

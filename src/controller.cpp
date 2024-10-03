@@ -1,6 +1,7 @@
 #include "simplesim/controller.hpp"
 
 #include <SFML/Graphics.hpp>
+#include <SFML/Graphics/Drawable.hpp>
 #include <geometry_msgs/msg/vector3.hpp>
 #include <rclcpp/rclcpp.hpp>
 
