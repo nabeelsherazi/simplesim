@@ -16,7 +16,7 @@ find_package(SFML REQUIRED COMPONENTS graphics system window)
 find_package(tf2 REQUIRED)
 find_package(tf2_ros REQUIRED)
 
-add_executable(simplesim_node src/main.cpp src/sim.cpp src/drone.cpp src/controller.cpp src/text.cpp src/visuals.cpp src/managed_sprite.cpp)
+add_executable(simplesim_node src/main.cpp src/sim.cpp src/drone.cpp src/controller.cpp src/text.cpp src/visuals.cpp src/managed_sprite.cpp src/explicit_instantiations.cpp)
 add_executable(simplesim_node::exe ALIAS simplesim_node)
 
 target_include_directories(simplesim_node PUBLIC

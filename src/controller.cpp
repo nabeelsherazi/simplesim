@@ -9,6 +9,9 @@
 #include "simplesim/interfaces/resettable.hpp"
 #include "simplesim/utils.hpp"
 
+extern template class rclcpp::Publisher<geometry_msgs::msg::Vector3>;
+extern template class rclcpp::Subscription<geometry_msgs::msg::Vector3>;
+
 Controller::Controller(const std::string& node_name, ControllerOptions& options)
     : Resettable(node_name), rclcpp::Node(node_name) {
     // Set options

@@ -6,6 +6,8 @@
 
 #include "simplesim/interfaces/resettable.hpp"
 
+extern template class rclcpp::Publisher<geometry_msgs::msg::Vector3>;
+
 SimNode::SimNode(const std::string& name) : Resettable(name), rclcpp::Node(name) {
     this->manualWaypointPublisher =
         this->create_publisher<geometry_msgs::msg::Vector3>("/simplesim/drone/waypoint", 10);

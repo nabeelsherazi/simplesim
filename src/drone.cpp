@@ -14,6 +14,10 @@
 #include "simplesim/interfaces/resettable.hpp"
 #include "simplesim/utils.hpp"
 
+extern template class rclcpp::Publisher<geometry_msgs::msg::Vector3>;
+extern template class rclcpp::Subscription<geometry_msgs::msg::Vector3>;
+extern template class rclcpp::Subscription<nav_msgs::msg::Odometry>;
+
 Drone::Drone(std::string node_name, DroneOptions& options) : Resettable(node_name), rclcpp::Node(node_name) {
     // Options
     this->options = options;
