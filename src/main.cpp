@@ -76,6 +76,8 @@ int main(int argc, char* argv[]) {
     executor.add_node(controller);
 
     sf::Clock clock;
+    sf::Clock interframeTimer;
+    bool paused = false;
 
     while (window.isOpen() && rclcpp::ok()) {
         sf::Event event;
@@ -97,15 +99,26 @@ int main(int argc, char* argv[]) {
                     sim->publishManualWaypoint(event.mouseButton);
                 }
             }
+            if (event.type == sf::Event::LostFocus) {
+                paused = true;
+            }
+            if (event.type == sf::Event::GainedFocus) {
+                paused = false;
+                interframeTimer.restart();
+            }
         }
 
-        auto dt = clock.restart();
+        auto dt = interframeTimer.restart();
 
         window.clear(sf::Color::White);
 
         // Advance simulation
+        if (paused) {
+            continue;
+        }
         drone->tick(dt);
         controller->tick(dt);
+        sim->publishClock(clock.getElapsedTime());
         visuals.update(renderableEntities);
         visuals.render(window);
 
