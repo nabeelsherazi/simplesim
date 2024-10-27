@@ -61,6 +61,10 @@ std::vector<const sf::Drawable*> Drone::getDrawables() const {
 
 void Drone::setAccelerationCommand(const geometry_msgs::msg::Vector3::SharedPtr msg) {
     this->accelerationCommand = sf::Vector2f(msg->x, msg->y);
+    // Clamp to maximum accepted command
+    if (simplesim::norm(this->accelerationCommand) > this->options.maxAcceleration) {
+        this->accelerationCommand = this->accelerationCommand / simplesim::norm(this->accelerationCommand) * this->options.maxAcceleration;
+    }
 }
 
 void Drone::setVelocityCommand(const geometry_msgs::msg::Vector3::SharedPtr msg) {
@@ -77,11 +81,8 @@ void Drone::tick(const sf::Time dt) {
     auto velocitySquared = simplesim::squareComponents(this->currentVelocity);
     auto linearDrag = -this->options.linearDragConstant * this->currentVelocity;
     auto quadraticDrag = -this->options.quadraticDragConstant * velocitySquared;
-    if (simplesim::norm(this->currentVelocity) < this->options.quadraticDragThreshold) {
-        this->currentDrag = linearDrag;
-    } else {
-        this->currentDrag = quadraticDrag;
-    }
+    auto alpha = simplesim::norm(this->currentVelocity) / this->options.quadraticDragThreshold;
+    this->currentDrag = (1 - alpha) * linearDrag + alpha * quadraticDrag;
 
     // Integrate for new velocity
     this->currentVelocity += dt.asSeconds() * (this->currentWind + this->currentDrag);

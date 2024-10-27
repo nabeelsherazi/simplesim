@@ -24,10 +24,10 @@ struct PidCoefficients {
 
 struct ControllerOptions {
     /// @brief PID coefficients for the position controller
-    PidCoefficients positionControllerTune = {.kp = 3.0f, .kd = -0.30f};
+    PidCoefficients positionControllerTune = {.kp = 1.5f, .kd = -0.025f};
 
     /// @brief PID coefficients for the cascaded velocity controller
-    PidCoefficients velocityControllerTune = {.kp = 2.0f, .kd = -0.04f};
+    PidCoefficients velocityControllerTune = {.kp = 1.0f, .kd = -0.005f};
 
     /// @brief Initial position reading for the controller
     sf::Vector2f initialPosition = {0.0f, 0.0f};
@@ -36,13 +36,13 @@ struct ControllerOptions {
     float waypointEpsilon = 20.0f;
 
     /// @brief Maximum acceleration command the controller will issue
-    float maxAcceleration = 10.0f;
+    float maxAcceleration = 500.0f;
 
     /// @brief Whether or not to use pure pursuit
-    bool usePurePursuit = false;
+    bool usePurePursuit = true;
 
     /// @brief Lookahead distance for pure pursuit
-    float lookaheadDistance = 50.0f;
+    float lookaheadDistance = 100.0f;
 
     /// @brief Resolution of lookahead search
     float lookaheadDistanceResolution = 5.0f;
@@ -96,6 +96,8 @@ class Controller : public Renderable, public Resettable {
     sf::Vector2f accelerationCommand;
 
    private:
+
+    long int tickCount = 0;
     rclcpp::Subscription<geometry_msgs::msg::Vector3>::SharedPtr positionSubscriber;
     rclcpp::Subscription<geometry_msgs::msg::Vector3>::SharedPtr velocitySubscriber;
     rclcpp::Subscription<geometry_msgs::msg::Vector3>::SharedPtr waypointSubscriber;

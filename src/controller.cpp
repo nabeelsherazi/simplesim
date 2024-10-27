@@ -1,5 +1,7 @@
 #include "simplesim/controller.hpp"
 
+#include <limits>
+
 #include <SFML/Graphics.hpp>
 #include <SFML/Graphics/Drawable.hpp>
 #include <geometry_msgs/msg/vector3.hpp>
@@ -78,6 +80,7 @@ void Controller::parameterCallback(const rclcpp::Parameter& param) {
 }
 
 void Controller::addWaypoint(sf::Vector2f wpt) {
+    RCLCPP_INFO(this->get_logger(), "Added waypoint %li (%f,%f)", this->waypointList.size(), wpt.x, wpt.y);
     this->waypointList.push_back(wpt);
     this->waypointMarks.addCross(wpt);
     this->waypointPathLines.append(sf::Vertex(wpt, sf::Color::Black));
@@ -87,46 +90,77 @@ void Controller::tick(sf::Time dt) {
     if (currentWaypointIndex < waypointList.size()) {
         // Setpoint is next waypoint
         currentSetpoint = waypointList[currentWaypointIndex];
+
         // If there's a waypoint after this one, use pure pursuit instead
         if (currentWaypointIndex + 1 < waypointList.size() && this->options.usePurePursuit) {
-            bool exitedLookaheadRadius = false;
-            // First interpolate from current position to next waypoint, after that between next waypoint and next+1
-            // waypoint
-            int i = 0;
-            auto lastWaypoint = this->currentPosition;
-            while (currentWaypointIndex + i < waypointList.size() && !exitedLookaheadRadius) {
-                // Walk between the waypoints until we leave the lookahead circle
-                for (float t = 0.0f; t <= 1.0f; t += 0.05f) {
-                    currentSetpoint = lastWaypoint + (t * (waypointList[currentWaypointIndex + i] - lastWaypoint));
-                    if (simplesim::norm(currentSetpoint - currentPosition) >= lookaheadDistance) {
-                        exitedLookaheadRadius = true;
-                        break;
-                    }
+            // Pure pursuit implementation
+            // Define lookahead distance (L_d)
+            float lookaheadDistance = this->options.lookaheadDistance;
+            float minDistance = std::numeric_limits<float>::max();
+            sf::Vector2f bestLookaheadPoint;
+
+            // Find the lookahead point along the path
+            for (int i = currentWaypointIndex; i < currentWaypointIndex + 1; i++) {
+                sf::Vector2f p1 = waypointList[i];
+                sf::Vector2f p2 = waypointList[i + 1];
+
+                // Vector from p1 to p2
+                sf::Vector2f segment = p2 - p1;
+                sf::Vector2f currentToP1 = currentPosition - p1;
+                float segmentLength = simplesim::norm(segment);
+                float t = simplesim::dot(currentToP1, segment) / (segmentLength * segmentLength);
+
+                // Clamp t to [0, 1] to stay within segment bounds
+                t = simplesim::clamp(t, 0.0f, 1.0f);
+
+                // Find the projection point
+                sf::Vector2f projectionPoint = p1 + t * segment;
+
+                // Calculate distance from current position to projection point
+                float distanceToProjection = simplesim::norm(currentPosition - projectionPoint);
+
+                // Find the point L_d away from the projection point along the segment
+                if (distanceToProjection < lookaheadDistance && distanceToProjection < minDistance) {
+                    sf::Vector2f direction = simplesim::normalize(segment);
+                    bestLookaheadPoint = projectionPoint + direction * std::min(lookaheadDistance, segmentLength - t * segmentLength);
+                    minDistance = distanceToProjection;
                 }
-                lastWaypoint = waypointList[currentWaypointIndex + i];
-                i += 1;
+            }
+            
+            // Update setpoint to bestLookaheadPoint if found, otherwise keep current waypoint
+            if (minDistance < std::numeric_limits<float>::max()) {
+                currentSetpoint = bestLookaheadPoint;
             }
         }
+
         lookaheadPoint.setPosition(currentSetpoint);
+
         // Cascade PID controller
         // Outer loop: position error -> desired velocity
-        positionError = currentSetpoint - currentPosition;
-        deltaPositionError = (positionError - lastPositionError) / dt.asSeconds();
-        velocityCommand = kp_position * positionError + kd_position * deltaPositionError;
-        lastPositionError = positionError;
+        // Outer loop should be slower than inner loop, about every other time is a good rule of thumb
+        if (tickCount % 2 == 0) {
+            positionError = currentSetpoint - currentPosition;
+            deltaPositionError = (positionError - lastPositionError) / dt.asSeconds();
+            velocityCommand = kp_position * positionError + kd_position * deltaPositionError;
+            lastPositionError = positionError;
+        }
 
         // Inner loop: velocity error -> desired acceleration
         velocityError = velocityCommand - currentVelocity;
         deltaVelocityError = (velocityError - lastVelocityError) / dt.asSeconds();
-        accelerationCommand = kp_velocity * velocityError;
+        accelerationCommand = kp_velocity * velocityError + kd_velocity * deltaVelocityError;
         lastVelocityError = velocityError;
         // Clamp acceleration
         auto accelerationNorm = simplesim::norm(accelerationCommand);
-        // if (accelerationNorm > maxAcceleration) {
-        //     accelerationCommand = accelerationCommand / accelerationNorm * maxAcceleration;
-        // }
+        if (accelerationNorm > maxAcceleration) {
+            accelerationCommand = accelerationCommand / accelerationNorm * this->options.maxAcceleration;
+        }
 
         // Move to next waypoint if we're close enough to the current one
+        // In pure pursuit mode, waypoint epsilon must be the same as the lookahead distance
+        if (this->options.usePurePursuit) {
+            waypointEpsilon = this->options.lookaheadDistance;
+        }
         if (simplesim::norm(waypointList[currentWaypointIndex] - currentPosition) <= waypointEpsilon &&
             currentWaypointIndex != waypointList.size() - 1) {
             this->currentWaypointIndex++;
@@ -137,7 +171,10 @@ void Controller::tick(sf::Time dt) {
     msg.x = accelerationCommand.x;
     msg.y = accelerationCommand.y;
     this->accelerationCommandPublisher->publish(msg);
+    tickCount++;
 }
+
+
 
 bool Controller::reset() {
     auto zero = sf::Vector2f(0.0f, 0.0f);

@@ -11,6 +11,14 @@ inline float norm(sf::Vector2f vec) {
     return std::sqrt(vec.x * vec.x + vec.y * vec.y);
 }
 
+inline sf::Vector2f normalize(sf::Vector2f vec) {
+    return vec / norm(vec);
+}
+
+inline float dot(sf::Vector2f v1, sf::Vector2f v2) {
+    return v1.x * v2.x + v1.y * v2.y;
+}
+
 inline float clamp(float val, float min, float max) {
     return std::max(min, std::min(val, max));
 }

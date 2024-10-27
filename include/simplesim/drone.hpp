@@ -34,16 +34,16 @@ struct DroneOptions {
     float windIntensity = 0.0f;
 
     /// @brief Maximum acceleration command the drone will accept
-    float maxAcceleration = 10.0f;
+    float maxAcceleration = 500.0f;
 
     /// @brief Drag constant in the linear regime (friction drag)
-    float linearDragConstant = 0.0005f;
+    float linearDragConstant = 0.05;
 
     /// @brief Drag constant in the quadratic regime (pressure drag)
     float quadraticDragConstant = 0.0005f;
 
     /// @brief Speed threshold at which to switch from linear to quadratic drag
-    float quadraticDragThreshold = 500.0f;
+    float quadraticDragThreshold = 100.0f;
 };
 
 /// @brief Simulates vehicle dynamics given control and environment forces
@@ -83,6 +83,8 @@ class Drone : public Renderable, public Resettable {
 
     sf::Vector2f currentWind;
     sf::Vector2f currentDrag;
+    sf::Vector2f currentVelocity;
+    sf::Vector2f currentPosition;
 
     DroneOptions options;
 
@@ -92,8 +94,6 @@ class Drone : public Renderable, public Resettable {
     DroneOptions::ControlMode controlMode;
 
     sf::Vector2f accelerationCommand;
-    sf::Vector2f currentVelocity;
-    sf::Vector2f currentPosition;
 
     std::random_device randomDevice;
     std::mt19937 randomGenerator;
