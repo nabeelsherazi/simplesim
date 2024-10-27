@@ -96,39 +96,43 @@ void Controller::tick(sf::Time dt) {
             // Pure pursuit implementation
             // Define lookahead distance (L_d)
             float lookaheadDistance = this->options.lookaheadDistance;
-            float minDistance = std::numeric_limits<float>::max();
+            float minPathParameter = std::numeric_limits<float>::max();
             sf::Vector2f bestLookaheadPoint;
+            bool foundLookaheadPoint = false;
 
-            // Find the lookahead point along the path
-            for (int i = currentWaypointIndex; i < currentWaypointIndex + 1; i++) {
+            // Iterate over all segments ahead of the current waypoint
+            for (size_t i = currentWaypointIndex; i < waypointList.size() - 1; i++) {
                 sf::Vector2f p1 = waypointList[i];
                 sf::Vector2f p2 = waypointList[i + 1];
 
-                // Vector from p1 to p2
-                sf::Vector2f segment = p2 - p1;
-                sf::Vector2f currentToP1 = currentPosition - p1;
-                float segmentLength = simplesim::norm(segment);
-                float t = simplesim::dot(currentToP1, segment) / (segmentLength * segmentLength);
-
-                // Clamp t to [0, 1] to stay within segment bounds
-                t = simplesim::clamp(t, 0.0f, 1.0f);
-
-                // Find the projection point
-                sf::Vector2f projectionPoint = p1 + t * segment;
-
-                // Calculate distance from current position to projection point
-                float distanceToProjection = simplesim::norm(currentPosition - projectionPoint);
-
-                // Find the point L_d away from the projection point along the segment
-                if (distanceToProjection < lookaheadDistance && distanceToProjection < minDistance) {
-                    sf::Vector2f direction = simplesim::normalize(segment);
-                    bestLookaheadPoint = projectionPoint + direction * std::min(lookaheadDistance, segmentLength - t * segmentLength);
-                    minDistance = distanceToProjection;
+                // Find intersection points between the circle (lookahead) and the segment
+                sf::Vector2f intersection1, intersection2;
+                int numIntersections = 0;
+                if (simplesim::getCircleSegmentIntersections(currentPosition, lookaheadDistance, p1, p2,
+                                                  intersection1, intersection2, numIntersections)) {
+                    // For each intersection point, calculate its parameter along the path
+                    float segmentLength = simplesim::norm(p2 - p1);
+                    if (numIntersections >= 1) {
+                        float s1 = i + simplesim::norm(intersection1 - p1) / segmentLength;
+                        if (s1 < minPathParameter) {
+                            bestLookaheadPoint = intersection1;
+                            minPathParameter = s1;
+                            foundLookaheadPoint = true;
+                        }
+                    }
+                    if (numIntersections == 2) {
+                        float s2 = i + simplesim::norm(intersection2 - p1) / segmentLength;
+                        if (s2 < minPathParameter) {
+                            bestLookaheadPoint = intersection2;
+                            minPathParameter = s2;
+                            foundLookaheadPoint = true;
+                        }
+                    }
                 }
             }
-            
+
             // Update setpoint to bestLookaheadPoint if found, otherwise keep current waypoint
-            if (minDistance < std::numeric_limits<float>::max()) {
+            if (foundLookaheadPoint) {
                 currentSetpoint = bestLookaheadPoint;
             }
         }
@@ -137,7 +141,7 @@ void Controller::tick(sf::Time dt) {
 
         // Cascade PID controller
         // Outer loop: position error -> desired velocity
-        // Outer loop should be slower than inner loop, about every other time is a good rule of thumb
+        // Outer loop should be slower than inner loop
         if (tickCount % 2 == 0) {
             positionError = currentSetpoint - currentPosition;
             deltaPositionError = (positionError - lastPositionError) / dt.asSeconds();
@@ -150,23 +154,26 @@ void Controller::tick(sf::Time dt) {
         deltaVelocityError = (velocityError - lastVelocityError) / dt.asSeconds();
         accelerationCommand = kp_velocity * velocityError + kd_velocity * deltaVelocityError;
         lastVelocityError = velocityError;
+
         // Clamp acceleration
-        auto accelerationNorm = simplesim::norm(accelerationCommand);
-        if (accelerationNorm > maxAcceleration) {
+        float accelerationNorm = simplesim::norm(accelerationCommand);
+        if (accelerationNorm > this->options.maxAcceleration) {
             accelerationCommand = accelerationCommand / accelerationNorm * this->options.maxAcceleration;
         }
 
-        // Move to next waypoint if we're close enough to the current one
-        // In pure pursuit mode, waypoint epsilon must be the same as the lookahead distance
+        // Adjust waypoint epsilon if using pure pursuit
         if (this->options.usePurePursuit) {
             waypointEpsilon = this->options.lookaheadDistance;
         }
+
+        // Move to next waypoint if close enough
         if (simplesim::norm(waypointList[currentWaypointIndex] - currentPosition) <= waypointEpsilon &&
-            currentWaypointIndex != waypointList.size() - 1) {
+            currentWaypointIndex < waypointList.size() - 1) {
             this->currentWaypointIndex++;
-            RCLCPP_INFO(this->get_logger(), "Moving to waypoint %i", currentWaypointIndex);
+            RCLCPP_INFO(this->get_logger(), "Moving to waypoint %zu", currentWaypointIndex);
         }
     }
+
     geometry_msgs::msg::Vector3 msg;
     msg.x = accelerationCommand.x;
     msg.y = accelerationCommand.y;
