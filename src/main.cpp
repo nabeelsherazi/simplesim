@@ -39,9 +39,9 @@ int main(int argc, char* argv[]) {
     DroneOptions droneOptions{
         .controlMode = DroneOptions::ControlMode::Acceleration,
         .initialPosition = {static_cast<float>(window.getSize().x) / 2, static_cast<float>(window.getSize().y) / 2},
-        .windIntensity = 0.0F,
-        .linearDragConstant = 0.0F,
-        .quadraticDragConstant = 0.0F};
+        .windIntensity = 1.0F,
+        .linearDragConstant = 0.000005F,
+        .quadraticDragConstant = 0.000005F};
     std::shared_ptr<Drone> drone = std::make_shared<Drone>("drone_node", droneOptions);
     DroneDebugInfo droneDebugInfo(drone);
     for (auto& debugInfo : droneDebugInfo.allDebugInfo()) {

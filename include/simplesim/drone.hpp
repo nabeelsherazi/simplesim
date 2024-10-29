@@ -30,26 +30,26 @@ struct DroneOptions {
     DroneOptions::ControlMode controlMode = DroneOptions::ControlMode::Acceleration;
 
     /// @brief Initial position for the drone
-    sf::Vector2f initialPosition = {0.0f, 0.0f};
+    sf::Vector2f initialPosition = {0.0F, 0.0F};
 
     /// @brief Magnitude of the maximum "jerk" to the wind at any iteration. Current wind speed is calculated like
     /// currentWind += rand(-intensity, intensity)
-    float windIntensity = 0.0f;
+    float windIntensity = 10.0F;
 
     /// @brief Maximum acceleration command the drone will accept
-    float maxAcceleration = 500.0f;
+    float maxAcceleration = 500.0F;
 
     /// @brief Maximum velocity command the drone will accept
-    float maxVelocity = 500.0f;
+    float maxVelocity = 500.0F;
 
     /// @brief Drag constant in the linear regime (friction drag)
-    float linearDragConstant = 0.05;
+    float linearDragConstant = 0.000005F;
 
     /// @brief Drag constant in the quadratic regime (pressure drag)
-    float quadraticDragConstant = 0.0005f;
+    float quadraticDragConstant = 0.000005F;
 
     /// @brief Speed threshold at which to switch from linear to quadratic drag
-    float quadraticDragThreshold = 100.0f;
+    float quadraticDragThreshold = 100.0F;
 };
 
 /// @brief Simulates vehicle dynamics given control and environment forces
@@ -125,6 +125,7 @@ class DroneDebugInfo {
         allDebugInfo.push_back(positionDebugInfo);
         allDebugInfo.push_back(velocityDebugInfo);
         allDebugInfo.push_back(windDebugInfo);
+        allDebugInfo.push_back(dragDebugInfo);
         return allDebugInfo;
     }
 
@@ -162,6 +163,19 @@ class DroneDebugInfo {
                 "wind: ({:.2f}, {:.2f})",
                 drone->currentWind.x,
                 drone->currentWind.y
+            );
+            // clang-format on
+        }
+        return std::string();
+    };
+
+    std::function<std::string(void)> dragDebugInfo = [this]() {
+        if (auto drone = this->drone.lock()) {
+            // clang-format off
+            return fmt::format(
+                "drag: ({:.2f}, {:.2f})",
+                drone->currentDrag.x,
+                drone->currentDrag.y
             );
             // clang-format on
         }

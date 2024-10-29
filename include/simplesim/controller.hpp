@@ -28,7 +28,7 @@ struct ControllerOptions {
     PidCoefficients positionControllerTune = {.kp = 1.5f, .kd = -0.025f};
 
     /// @brief PID coefficients for the cascaded velocity controller
-    PidCoefficients velocityControllerTune = {.kp = 1.0f, .kd = -0.005f};
+    PidCoefficients velocityControllerTune = {.kp = 2.0f, .kd = -0.005f};
 
     /// @brief Initial position reading for the controller
     sf::Vector2f initialPosition = {0.0f, 0.0f};
