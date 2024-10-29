@@ -64,15 +64,9 @@ There's a gotcha though. As we're looking for intersections of the path with the
 
 The math works like this. Let the current path segment be between waypoints $\vec{p_1}$ and $\vec{p_2}$, and our current position be $\vec{p_v}$.
 
-If we're far away from the path, our best waypoint is the point on the segment closest to the vehicle.
+If we're far away from the path, our best waypoint is the point on the segment closest to the vehicle, which we get by taking the projection of the vehicle position onto the segment.
 
-$$
- 
- proj_{\vec{p_1}\vec{p_2}} (\vec{p_v}) = \frac{\vec{p_v} \cdot \vec{p_2 - p_1}}{\|\vec{p_2 - p_1}\|^2} \vec{p_2 - p_1}
-
-$$
-
-which in code is:
+In code that's:
 
 ```cpp
 // Vector from p1 to p2
