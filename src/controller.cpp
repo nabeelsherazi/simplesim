@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <functional>
+#include <string>
 #include <vector>
 
 #include <fmt/core.h>
@@ -29,36 +30,48 @@ Controller::Controller(const std::string& node_name, ControllerOptions& options)
     this->waypointEpsilon = options.waypointEpsilon;
     this->currentPosition = options.initialPosition;
 
+    // Validation
+
+    // If pure pursuit is enabled, set waypoint epsilon to lookahead distance
+    if (options.usePurePursuit) {
+        this->waypointEpsilon = this->lookaheadDistance;
+    }
+
     // World input subscribers
     this->positionSubscriber = this->create_subscription<geometry_msgs::msg::Vector3>(
-        "/simplesim/drone/position", 10, [this](geometry_msgs::msg::Vector3::SharedPtr msg) {
+        "drone/position", 10, [this](geometry_msgs::msg::Vector3::SharedPtr msg) {
             this->currentPosition = sf::Vector2f(msg->x, msg->y);
             this->lookaheadCircle.setPosition(this->currentPosition);
         });
 
     this->velocitySubscriber = this->create_subscription<geometry_msgs::msg::Vector3>(
-        "/simplesim/drone/velocity", 10,
+        "drone/velocity", 10,
         [this](geometry_msgs::msg::Vector3::SharedPtr msg) { this->currentVelocity = sf::Vector2f(msg->x, msg->y); });
 
     // Trajectory input subscribers
     this->waypointSubscriber = this->create_subscription<geometry_msgs::msg::Vector3>(
-        "/simplesim/drone/waypoint", 10,
+        "drone/waypoint", 10,
         [this](geometry_msgs::msg::Vector3::SharedPtr msg) { this->addWaypoint(sf::Vector2f(msg->x, msg->y)); });
 
     // Command output publishers
-    this->accelerationCommandPublisher =
-        this->create_publisher<geometry_msgs::msg::Vector3>("/simplesim/drone/accel_cmd", 10);
-    this->velocityCommandPublisher =
-        this->create_publisher<geometry_msgs::msg::Vector3>("/simplesim/drone/velocity_cmd", 10);
+    this->accelerationCommandPublisher = this->create_publisher<geometry_msgs::msg::Vector3>("drone/accel_cmd", 10);
+    this->velocityCommandPublisher = this->create_publisher<geometry_msgs::msg::Vector3>("drone/velocity_cmd", 10);
 
     // Parameter subscribers
-    this->declare_parameter("kp_position", 0.0F);
-    this->declare_parameter("kd_position", 0.0F);
+    this->declare_parameter("kp_position", this->options.positionControllerTune.kp);
+    this->declare_parameter("kd_position", this->options.positionControllerTune.kd);
+    this->declare_parameter("kp_velocity", this->options.velocityControllerTune.kp);
+    this->declare_parameter("kd_velocity", this->options.velocityControllerTune.kd);
+    this->declare_parameter("lookahead_distance", this->options.lookaheadDistance);
+    this->declare_parameter("waypoint_epsilon", this->options.waypointEpsilon);
+    this->declare_parameter("max_acceleration", this->options.maxAcceleration);
+    this->declare_parameter("use_pure_pursuit", this->options.usePurePursuit);
+
     parameterSubscriber = std::make_shared<rclcpp::ParameterEventHandler>(this);
-    parameterCallbackHandle =
-        parameterSubscriber->add_parameter_callback("kp_position", std::bind(&Controller::parameterCallback, this, _1));
-    parameterCallbackHandle =
-        parameterSubscriber->add_parameter_callback("kd_position", std::bind(&Controller::parameterCallback, this, _1));
+    parameterCallbackHandles.push_back(parameterSubscriber->add_parameter_callback(
+        "kp_position", [this](auto param) { this->parameterCallback(param); }));
+    parameterCallbackHandles.push_back(parameterSubscriber->add_parameter_callback(
+        "kd_position", [this](auto param) { this->parameterCallback(param); }));
 
     // Configure drawables
     waypointPathLines.setPrimitiveType(sf::LinesStrip);
@@ -76,8 +89,41 @@ Controller::Controller(const std::string& node_name, ControllerOptions& options)
 void Controller::parameterCallback(const rclcpp::Parameter& param) {
     if (param.get_name() == "kp_position") {
         this->kp_position = static_cast<float>(param.as_double());
-    } else if (param.get_name() == "kd_position") {
+    }
+
+    else if (param.get_name() == "kd_position") {
         this->kd_position = static_cast<float>(param.as_double());
+    }
+
+    else if (param.get_name() == "kp_velocity") {
+        this->kp_velocity = static_cast<float>(param.as_double());
+    }
+
+    else if (param.get_name() == "kd_velocity") {
+        this->kd_velocity = static_cast<float>(param.as_double());
+    }
+
+    else if (param.get_name() == "lookahead_distance") {
+        this->lookaheadDistance = static_cast<float>(param.as_double());
+        this->lookaheadCircle.setRadius(this->lookaheadDistance);
+        this->lookaheadCircle.setOrigin({this->lookaheadDistance, this->lookaheadDistance});
+    }
+
+    else if (param.get_name() == "waypoint_epsilon") {
+        this->waypointEpsilon = static_cast<float>(param.as_double());
+    }
+
+    else if (param.get_name() == "max_acceleration") {
+        this->options.maxAcceleration = static_cast<float>(param.as_double());
+    }
+
+    else if (param.get_name() == "use_pure_pursuit") {
+        this->options.usePurePursuit = param.as_bool();
+        if (this->options.usePurePursuit) {
+            this->waypointEpsilon = this->options.lookaheadDistance;
+        } else {
+            this->waypointEpsilon = this->options.waypointEpsilon;
+        }
     }
     RCLCPP_INFO(this->get_logger(), "Parameter %s updated :)", param.get_name().c_str());
 }
@@ -165,11 +211,6 @@ void Controller::tick(sf::Time dt) {
         float accelerationNorm = simplesim::norm(accelerationCommand);
         if (accelerationNorm > this->options.maxAcceleration) {
             accelerationCommand = accelerationCommand / accelerationNorm * this->options.maxAcceleration;
-        }
-
-        // Adjust waypoint epsilon if using pure pursuit
-        if (this->options.usePurePursuit) {
-            waypointEpsilon = this->options.lookaheadDistance;
         }
 
         // Move to next waypoint if close enough

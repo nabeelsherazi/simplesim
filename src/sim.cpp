@@ -1,19 +1,18 @@
 #include "simplesim/sim.hpp"
 
-#include <string>
 #include <cmath>
+#include <string>
 
-#include <rclcpp/rclcpp.hpp>
 #include <builtin_interfaces/msg/time.hpp>
+#include <rclcpp/rclcpp.hpp>
 
 #include "simplesim/interfaces/resettable.hpp"
 
 extern template class rclcpp::Publisher<geometry_msgs::msg::Vector3>;
 
 SimNode::SimNode(const std::string& name) : Resettable(name), rclcpp::Node(name) {
-    this->manualWaypointPublisher =
-        this->create_publisher<geometry_msgs::msg::Vector3>("/simplesim/drone/waypoint", 10);
-    this->clockPublisher = this->create_publisher<builtin_interfaces::msg::Time>("/clock", 10);
+    this->manualWaypointPublisher = this->create_publisher<geometry_msgs::msg::Vector3>("drone/waypoint", 10);
+    this->clockPublisher = this->create_publisher<builtin_interfaces::msg::Time>("clock", 10);
 }
 
 bool SimNode::reset() {

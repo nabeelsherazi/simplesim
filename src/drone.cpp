@@ -23,21 +23,21 @@ Drone::Drone(std::string node_name, DroneOptions& options) : Resettable(node_nam
     this->options = options;
     // Initial position
     this->currentPosition = options.initialPosition;
-    this->position_publisher = this->create_publisher<geometry_msgs::msg::Vector3>("/simplesim/drone/position", 10);
-    this->velocity_publisher = this->create_publisher<geometry_msgs::msg::Vector3>("/simplesim/drone/velocity", 10);
-    this->odometryPublisher = this->create_publisher<nav_msgs::msg::Odometry>("/simplesim/drone/odometry", 10);
+    this->position_publisher = this->create_publisher<geometry_msgs::msg::Vector3>("drone/position", 10);
+    this->velocity_publisher = this->create_publisher<geometry_msgs::msg::Vector3>("drone/velocity", 10);
+    this->odometryPublisher = this->create_publisher<nav_msgs::msg::Odometry>("drone/odometry", 10);
     this->transformBroadcaster = std::make_shared<tf2_ros::TransformBroadcaster>(this);
     // Control mode
     this->controlMode = options.controlMode;
     switch (options.controlMode) {
         case DroneOptions::ControlMode::Acceleration:
             this->accelerationCommandSubscriber = this->create_subscription<geometry_msgs::msg::Vector3>(
-                "/simplesim/drone/accel_cmd", 10,
+                "drone/accel_cmd", 10,
                 [=](const std::shared_ptr<geometry_msgs::msg::Vector3> msg) { this->setAccelerationCommand(msg); });
             break;
         case DroneOptions::ControlMode::Velocity:
             this->velocityCommandSubscriber = this->create_subscription<geometry_msgs::msg::Vector3>(
-                "/simplesim/drone/velocity_cmd", 10,
+                "drone/velocity_cmd", 10,
                 [=](const std::shared_ptr<geometry_msgs::msg::Vector3> msg) { this->setVelocityCommand(msg); });
             break;
         default:

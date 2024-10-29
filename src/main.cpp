@@ -37,7 +37,7 @@ int main(int argc, char* argv[]) {
 
     // Simulated drone model setup
     DroneOptions droneOptions{
-        .controlMode = DroneOptions::ControlMode::Velocity,
+        .controlMode = DroneOptions::ControlMode::Acceleration,
         .initialPosition = {static_cast<float>(window.getSize().x) / 2, static_cast<float>(window.getSize().y) / 2},
         .windIntensity = 0.0F,
         .linearDragConstant = 0.0F,

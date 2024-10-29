@@ -44,9 +44,6 @@ struct ControllerOptions {
 
     /// @brief Lookahead distance for pure pursuit
     float lookaheadDistance = 100.0f;
-
-    /// @brief Resolution of lookahead search
-    float lookaheadDistanceResolution = 5.0f;
 };
 
 class Controller : public Renderable, public Resettable {
@@ -98,13 +95,14 @@ class Controller : public Renderable, public Resettable {
 
    private:
     long int tickCount = 0;
+
     rclcpp::Subscription<geometry_msgs::msg::Vector3>::SharedPtr positionSubscriber;
     rclcpp::Subscription<geometry_msgs::msg::Vector3>::SharedPtr velocitySubscriber;
     rclcpp::Subscription<geometry_msgs::msg::Vector3>::SharedPtr waypointSubscriber;
     rclcpp::Publisher<geometry_msgs::msg::Vector3>::SharedPtr accelerationCommandPublisher;
     rclcpp::Publisher<geometry_msgs::msg::Vector3>::SharedPtr velocityCommandPublisher;
     std::shared_ptr<rclcpp::ParameterEventHandler> parameterSubscriber;
-    std::shared_ptr<rclcpp::ParameterCallbackHandle> parameterCallbackHandle;
+    std::vector<std::shared_ptr<rclcpp::ParameterCallbackHandle>> parameterCallbackHandles;
 
     friend class ControllerDebugInfo;
 };
