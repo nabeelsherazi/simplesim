@@ -1,8 +1,10 @@
 #include "simplesim/controller.hpp"
 
 #include <algorithm>
+#include <functional>
 #include <vector>
 
+#include <fmt/core.h>
 #include <SFML/Graphics.hpp>
 #include <SFML/Graphics/Drawable.hpp>
 #include <geometry_msgs/msg/vector3.hpp>
@@ -50,8 +52,8 @@ Controller::Controller(const std::string& node_name, ControllerOptions& options)
         this->create_publisher<geometry_msgs::msg::Vector3>("/simplesim/drone/velocity_cmd", 10);
 
     // Parameter subscribers
-    this->declare_parameter("kp_position", 0.0f);
-    this->declare_parameter("kd_position", 0.0f);
+    this->declare_parameter("kp_position", 0.0F);
+    this->declare_parameter("kd_position", 0.0F);
     parameterSubscriber = std::make_shared<rclcpp::ParameterEventHandler>(this);
     parameterCallbackHandle =
         parameterSubscriber->add_parameter_callback("kp_position", std::bind(&Controller::parameterCallback, this, _1));
@@ -81,7 +83,8 @@ void Controller::parameterCallback(const rclcpp::Parameter& param) {
 }
 
 void Controller::addWaypoint(sf::Vector2f wpt) {
-    RCLCPP_INFO(this->get_logger(), "Added waypoint %li (%f,%f)", this->waypointList.size(), wpt.x, wpt.y);
+    RCLCPP_INFO(this->get_logger(),
+                fmt::format("Added waypoint {} ({:.0f},{:.0f})", this->waypointList.size(), wpt.x, wpt.y).c_str());
     this->waypointList.push_back(wpt);
     this->waypointMarks.addCross(wpt);
     this->waypointPathLines.append(sf::Vertex(wpt, sf::Color::Black));
@@ -110,7 +113,7 @@ void Controller::tick(sf::Time dt) {
             float t = simplesim::dot(currentToP1, segment) / (segmentLength * segmentLength);
 
             // Clamp t to [0, 1] to stay within segment bounds
-            t = simplesim::clamp(t, 0.0f, 1.0f);
+            t = simplesim::clamp(t, 0.0F, 1.0F);
 
             // Initial best lookahead point is the projection point
             currentSetpoint = p1 + t * segment;
@@ -173,19 +176,24 @@ void Controller::tick(sf::Time dt) {
         if (simplesim::norm(waypointList[currentWaypointIndex] - currentPosition) <= waypointEpsilon &&
             currentWaypointIndex < waypointList.size() - 1) {
             this->currentWaypointIndex++;
-            RCLCPP_INFO(this->get_logger(), "Moving to waypoint %zu", currentWaypointIndex);
+            RCLCPP_INFO(this->get_logger(), "Moving to waypoint %i", currentWaypointIndex);
         }
     }
 
-    geometry_msgs::msg::Vector3 msg;
-    msg.x = accelerationCommand.x;
-    msg.y = accelerationCommand.y;
-    this->accelerationCommandPublisher->publish(msg);
+    geometry_msgs::msg::Vector3 velocityCommandMsg;
+    velocityCommandMsg.x = velocityCommand.x;
+    velocityCommandMsg.y = velocityCommand.y;
+    this->velocityCommandPublisher->publish(velocityCommandMsg);
+
+    geometry_msgs::msg::Vector3 accelerationCommandMsg;
+    accelerationCommandMsg.x = accelerationCommand.x;
+    accelerationCommandMsg.y = accelerationCommand.y;
+    this->accelerationCommandPublisher->publish(accelerationCommandMsg);
     tickCount++;
 }
 
 bool Controller::reset() {
-    auto zero = sf::Vector2f(0.0f, 0.0f);
+    auto zero = sf::Vector2f(0.0F, 0.0F);
     this->currentWaypointIndex = 0;
     this->waypointList.clear();
     this->waypointMarks.clear();

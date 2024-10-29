@@ -63,12 +63,18 @@ void Drone::setAccelerationCommand(const geometry_msgs::msg::Vector3::SharedPtr 
     this->accelerationCommand = sf::Vector2f(msg->x, msg->y);
     // Clamp to maximum accepted command
     if (simplesim::norm(this->accelerationCommand) > this->options.maxAcceleration) {
-        this->accelerationCommand = this->accelerationCommand / simplesim::norm(this->accelerationCommand) * this->options.maxAcceleration;
+        this->accelerationCommand =
+            this->accelerationCommand / simplesim::norm(this->accelerationCommand) * this->options.maxAcceleration;
     }
 }
 
 void Drone::setVelocityCommand(const geometry_msgs::msg::Vector3::SharedPtr msg) {
     this->currentVelocity = sf::Vector2f(msg->x, msg->y);
+    // Clamp to maximum accepted command
+    if (simplesim::norm(this->currentVelocity) > this->options.maxVelocity) {
+        this->currentVelocity =
+            this->currentVelocity / simplesim::norm(this->currentVelocity) * this->options.maxVelocity;
+    }
 }
 
 void Drone::tick(const sf::Time dt) {

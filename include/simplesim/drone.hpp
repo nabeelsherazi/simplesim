@@ -1,8 +1,10 @@
 #pragma once
 
 #include <filesystem>
+#include <functional>
 #include <random>
 
+#include <fmt/core.h>
 #include <tf2_ros/transform_broadcaster.h>
 #include <SFML/Graphics.hpp>
 #include <geometry_msgs/msg/transform_stamped.hpp>
@@ -13,6 +15,7 @@
 #include "simplesim/interfaces/renderable.hpp"
 #include "simplesim/interfaces/resettable.hpp"
 #include "simplesim/managed_sprite.hpp"
+#include "simplesim/utils.hpp"
 #include "simplesim/visuals.hpp"
 
 using namespace std::placeholders;
@@ -35,6 +38,9 @@ struct DroneOptions {
 
     /// @brief Maximum acceleration command the drone will accept
     float maxAcceleration = 500.0f;
+
+    /// @brief Maximum velocity command the drone will accept
+    float maxVelocity = 500.0f;
 
     /// @brief Drag constant in the linear regime (friction drag)
     float linearDragConstant = 0.05;
@@ -106,4 +112,62 @@ class Drone : public Renderable, public Resettable {
     rclcpp::Publisher<geometry_msgs::msg::Vector3>::SharedPtr velocity_publisher;
     rclcpp::Subscription<geometry_msgs::msg::Vector3>::SharedPtr accelerationCommandSubscriber;
     rclcpp::Subscription<geometry_msgs::msg::Vector3>::SharedPtr velocityCommandSubscriber;
+
+    friend class DroneDebugInfo;
+};
+
+class DroneDebugInfo {
+   public:
+    explicit DroneDebugInfo(std::shared_ptr<Drone> drone) : drone(drone) {};
+
+    std::vector<std::function<std::string(void)>> allDebugInfo() {
+        std::vector<std::function<std::string(void)>> allDebugInfo;
+        allDebugInfo.push_back(positionDebugInfo);
+        allDebugInfo.push_back(velocityDebugInfo);
+        allDebugInfo.push_back(windDebugInfo);
+        return allDebugInfo;
+    }
+
+    std::function<std::string(void)> positionDebugInfo = [this]() {
+        if (auto drone = this->drone.lock()) {
+            // clang-format off
+            return fmt::format(
+                "current position: ({:.2f}, {:.2f})",
+                drone->currentPosition.x,
+                drone->currentPosition.y
+            );
+            // clang-format on
+        }
+        return std::string();
+    };
+
+    std::function<std::string(void)> velocityDebugInfo = [this]() {
+        if (auto drone = this->drone.lock()) {
+            // clang-format off
+            return fmt::format(
+                "current velocity {:.0f} px/s: ({:.2f}, {:.2f})",
+                simplesim::norm(drone->currentVelocity),
+                drone->currentVelocity.x,
+                drone->currentVelocity.y
+            );
+            // clang-format on
+        }
+        return std::string();
+    };
+
+    std::function<std::string(void)> windDebugInfo = [this]() {
+        if (auto drone = this->drone.lock()) {
+            // clang-format off
+            return fmt::format(
+                "wind: ({:.2f}, {:.2f})",
+                drone->currentWind.x,
+                drone->currentWind.y
+            );
+            // clang-format on
+        }
+        return std::string();
+    };
+
+   private:
+    std::weak_ptr<Drone> drone;
 };

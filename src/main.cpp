@@ -14,8 +14,8 @@
 #include "simplesim/shapes.hpp"
 #include "simplesim/sim.hpp"
 #include "simplesim/text.hpp"
-#include "simplesim/visuals.hpp"
 #include "simplesim/utils.hpp"
+#include "simplesim/visuals.hpp"
 
 static const auto executableLocation = std::filesystem::canonical("/proc/self/exe").parent_path();
 
@@ -34,24 +34,19 @@ int main(int argc, char* argv[]) {
     DebugTextConsole debugText;
     debugText.loadFont(executableLocation / "data/fonts/OpenSans-Regular.ttf");
     int fpsDisplayHandle = debugText.addFixedTextLine("0 fps");
-    int waypointDisplayHandle = debugText.addFixedTextLine("current waypoint: None");
-    int speedDisplayHandle = debugText.addFixedTextLine("current speed: 0 px/s");
-    int errorDisplayHandle = debugText.addFixedTextLine("x error: 0, y error: 0");
-    int positionPidDisplayHandle =
-        debugText.addFixedTextLine("(kp) * error + (kd) * (error - lastError) / dt = command");
-    int velocityPidDisplayHandle =
-        debugText.addFixedTextLine("(kp) * error + (kd) * (error - lastError) / dt = command");
-    int windDisplayHandle = debugText.addFixedTextLine("current wind: (0, 0)");
 
     // Simulated drone model setup
     DroneOptions droneOptions{
-        .controlMode = DroneOptions::ControlMode::Acceleration,
+        .controlMode = DroneOptions::ControlMode::Velocity,
         .initialPosition = {static_cast<float>(window.getSize().x) / 2, static_cast<float>(window.getSize().y) / 2},
-        .windIntensity = 0.0f,
-        .linearDragConstant = 0.0f,
-        .quadraticDragConstant = 0.0f
-        };
+        .windIntensity = 0.0F,
+        .linearDragConstant = 0.0F,
+        .quadraticDragConstant = 0.0F};
     std::shared_ptr<Drone> drone = std::make_shared<Drone>("drone_node", droneOptions);
+    DroneDebugInfo droneDebugInfo(drone);
+    for (auto& debugInfo : droneDebugInfo.allDebugInfo()) {
+        debugText.addSelfUpdatingTextLine(debugInfo);
+    }
 
     // Sprite for drone model, limit scope because setSprite will move in its guts
     {
@@ -59,14 +54,18 @@ int main(int argc, char* argv[]) {
         if (!droneSprite.load(executableLocation / "data/sprites/drone.png")) {
             return 1;
         }
-        droneSprite.scaleToSize(75.0f);
-        droneSprite.setOriginRelative({0.5f, 0.75f});
+        droneSprite.scaleToSize(75.0F);
+        droneSprite.setOriginRelative({0.5F, 0.75F});
         drone->setSprite(std::move(droneSprite));
     }
 
     // Trajectory controller
     ControllerOptions controllerOptions;
     std::shared_ptr<Controller> controller = std::make_shared<Controller>("controller_node", controllerOptions);
+    ControllerDebugInfo controllerDebugInfo(controller);
+    for (auto& debugInfo : controllerDebugInfo.allDebugInfo()) {
+        debugText.addSelfUpdatingTextLine(debugInfo);
+    }
 
     // Simulation main node (reset service, manual waypoint publisher)
     auto sim = std::make_shared<SimNode>("simplesim");
@@ -128,32 +127,7 @@ int main(int argc, char* argv[]) {
         visuals.render(window);
 
         // Debug text
-#pragma region debugtext
         debugText.updateFixedTextLine(fpsDisplayHandle, fmt::format("{:.1f} fps", 1 / dt.asSeconds()));
-        debugText.updateFixedTextLine(waypointDisplayHandle,
-                                      fmt::format("current waypoint: {} ({}, {})", controller->currentWaypointIndex, controller->currentSetpoint.x, controller->currentSetpoint.y));
-        debugText.updateFixedTextLine(
-            errorDisplayHandle,
-            fmt::format("x error: {:.2f}, y error: {:.2f}, norm: {:.2f}", controller->positionError.x,
-                        controller->positionError.y, simplesim::norm(controller->positionError)));
-        debugText.updateFixedTextLine(
-            positionPidDisplayHandle,
-            fmt::format("kp_p:={:.2f} * ({:.2f},{:.2f}) + kd_p:{:.2f} * "
-                        "({:.2f},{:.2f}) = ({:.2f}, {:.2f})",
-                        controller->kp_position, controller->positionError.x, controller->positionError.y,
-                        controller->kd_position, controller->deltaPositionError.x, controller->deltaPositionError.y,
-                        controller->velocityCommand.x, controller->velocityCommand.y));
-        debugText.updateFixedTextLine(
-            velocityPidDisplayHandle,
-            fmt::format("kp_v:={:.2f} * ({:.2f},{:.2f}) + kd_v:{:.2f} * "
-                        "({:.2f},{:.2f}) = ({:.2f}, {:.2f})",
-                        controller->kp_velocity, controller->velocityError.x, controller->velocityError.y,
-                        controller->kd_velocity, controller->deltaVelocityError.x, controller->deltaVelocityError.y,
-                        controller->accelerationCommand.x, controller->accelerationCommand.y));
-        debugText.updateFixedTextLine(
-            windDisplayHandle, fmt::format("wind: ({:.1f}, {:.1f})", drone->currentWind.x, drone->currentWind.y));
-        debugText.updateFixedTextLine(speedDisplayHandle, fmt::format("current speed: {:.0f} px/s", simplesim::norm(drone->currentVelocity)));
-#pragma endregion
         debugText.tick(dt);
 
         for (auto& textLine : debugText.drawables()) {

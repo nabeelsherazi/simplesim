@@ -12,14 +12,12 @@
 
 class DebugTextConsole {
    public:
-    DebugTextConsole(float textSizePixels = 12.0,
-                     float padding = 3.0,
-                     sf::Time updateGranularity = sf::milliseconds(60));
+    DebugTextConsole(float textSizePixels = 12.0, float padding = 3.0, unsigned int updateFrequencyHz = 30);
 
     /// @brief Load a font from a file
     /// @param filename the path to the font file
     /// @return true if the font was loaded successfully
-    bool loadFont(std::filesystem::path filename);
+    bool loadFont(const std::filesystem::path& filename);
 
     /// @brief Set the size of the text in the console
     /// @param pixels The size of the text in pixels
@@ -28,9 +26,10 @@ class DebugTextConsole {
 
     /// @brief Add a persistent text line to the console
     /// @param initialText The initial text to display
+    /// @param color The color to display the text
     /// @return A handle that can be used to update the text line
     /// @see updateFixedTextLine
-    int addFixedTextLine(std::string initialText);
+    int addFixedTextLine(std::string initialText, sf::Color color = sf::Color::Black);
 
     /// @brief Update a fixed text line
     /// @param index The handle of a text line to update
@@ -41,7 +40,7 @@ class DebugTextConsole {
     /// @brief Add a text line to the console that updates itself
     /// @param updater A function that returns the text to display
     /// @param color The color to display the text
-    void addSelfUpdatingTextLine(std::function<std::string()> updater, sf::Color color = sf::Color::Black);
+    void addSelfUpdatingTextLine(const std::function<std::string()>& updater, sf::Color color = sf::Color::Black);
 
     /// @brief Add a text line to the console that will disappear
     /// @param text The text to display
@@ -70,6 +69,6 @@ class DebugTextConsole {
     sf::Time updateGranularity;
     sf::Time timeSinceLastUpdate;
     std::vector<sf::Text> fixedTextLines;
-    std::vector<std::function<std::string()>> selfUpdatingTextLines;
+    std::vector<std::pair<int, std::function<std::string()>>> selfUpdatingTextLines;
     std::vector<std::pair<sf::Text, sf::Time>> temporaryTextLines;
 };
