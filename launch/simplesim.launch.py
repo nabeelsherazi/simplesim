@@ -23,6 +23,7 @@ def generate_launch_description():
             Node(
                 package="simplesim",
                 executable="simplesim_node",
+                namespace="simplesim",
                 output="screen",
             ),
             IncludeLaunchDescription(
