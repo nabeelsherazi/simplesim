@@ -1,6 +1,7 @@
 #include "simplesim/controller.hpp"
 
-#include <limits>
+#include <algorithm>
+#include <vector>
 
 #include <SFML/Graphics.hpp>
 #include <SFML/Graphics/Drawable.hpp>
@@ -91,49 +92,51 @@ void Controller::tick(sf::Time dt) {
         // Setpoint is next waypoint
         currentSetpoint = waypointList[currentWaypointIndex];
 
-        // If there's a waypoint after this one, use pure pursuit instead
+        // If there's a waypoint after this one, use pure pursuit instead (if enabled)
         if (currentWaypointIndex + 1 < waypointList.size() && this->options.usePurePursuit) {
-            // Pure pursuit implementation
             // Define lookahead distance (L_d)
             float lookaheadDistance = this->options.lookaheadDistance;
-            float minPathParameter = std::numeric_limits<float>::max();
-            sf::Vector2f bestLookaheadPoint;
-            bool foundLookaheadPoint = false;
 
-            // Iterate over all segments ahead of the current waypoint
-            for (size_t i = currentWaypointIndex; i < waypointList.size() - 1; i++) {
-                sf::Vector2f p1 = waypointList[i];
-                sf::Vector2f p2 = waypointList[i + 1];
+            // Initialize best lookahead point as the point on the current path segment closest to the current position
 
-                // Find intersection points between the circle (lookahead) and the segment
-                sf::Vector2f intersection1, intersection2;
-                int numIntersections = 0;
-                if (simplesim::getCircleSegmentIntersections(currentPosition, lookaheadDistance, p1, p2,
-                                                  intersection1, intersection2, numIntersections)) {
-                    // For each intersection point, calculate its parameter along the path
-                    float segmentLength = simplesim::norm(p2 - p1);
-                    if (numIntersections >= 1) {
-                        float s1 = i + simplesim::norm(intersection1 - p1) / segmentLength;
-                        if (s1 < minPathParameter) {
-                            bestLookaheadPoint = intersection1;
-                            minPathParameter = s1;
-                            foundLookaheadPoint = true;
-                        }
-                    }
-                    if (numIntersections == 2) {
-                        float s2 = i + simplesim::norm(intersection2 - p1) / segmentLength;
-                        if (s2 < minPathParameter) {
-                            bestLookaheadPoint = intersection2;
-                            minPathParameter = s2;
-                            foundLookaheadPoint = true;
-                        }
-                    }
+            // Vector from p1 to p2
+            auto p1 = waypointList[currentWaypointIndex];
+            auto p2 = waypointList[currentWaypointIndex + 1];
+
+            sf::Vector2f segment = p2 - p1;
+            sf::Vector2f currentToP1 = currentPosition - p1;
+            float segmentLength = simplesim::norm(segment);
+            // Find the projection point
+            float t = simplesim::dot(currentToP1, segment) / (segmentLength * segmentLength);
+
+            // Clamp t to [0, 1] to stay within segment bounds
+            t = simplesim::clamp(t, 0.0f, 1.0f);
+
+            // Initial best lookahead point is the projection point
+            currentSetpoint = p1 + t * segment;
+
+            // Find the lookahead point along the path
+            // If this isn't the first waypoint, the current segment is from the previous waypoint to the current
+            // waypoint Otherwise, it's from the first waypoint to the second waypoint
+            auto segmentStartIndex = currentWaypointIndex == 0 ? 0 : currentWaypointIndex - 1;
+
+            for (int i = segmentStartIndex; i < waypointList.size(); i++) {
+                p1 = waypointList[i];
+                p2 = waypointList[i + 1];
+
+                // After the current segment, we only check following segments if their start is within the lookahead
+                // distance
+                if (i > segmentStartIndex && !simplesim::pointWithinCircle(currentPosition, lookaheadDistance, p1)) {
+                    break;
                 }
-            }
 
-            // Update setpoint to bestLookaheadPoint if found, otherwise keep current waypoint
-            if (foundLookaheadPoint) {
-                currentSetpoint = bestLookaheadPoint;
+                auto intersections =
+                    simplesim::intersectCircleAndLineParameterized(currentPosition, lookaheadDistance, p1, p2);
+
+                if (!intersections.empty()) {
+                    auto furthestIntersection = std::max_element(intersections.begin(), intersections.end());
+                    currentSetpoint = p1 + *furthestIntersection * (p2 - p1);
+                }
             }
         }
 
@@ -180,8 +183,6 @@ void Controller::tick(sf::Time dt) {
     this->accelerationCommandPublisher->publish(msg);
     tickCount++;
 }
-
-
 
 bool Controller::reset() {
     auto zero = sf::Vector2f(0.0f, 0.0f);

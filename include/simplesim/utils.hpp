@@ -31,48 +31,68 @@ inline sf::Vector2f squareComponents(sf::Vector2f& vec) {
     return {vec.x * vec.x, vec.y * vec.y};
 }
 
-// Function to compute intersections between a circle and a line segment
-inline bool getCircleSegmentIntersections(const sf::Vector2f& center, float radius,
-                                               const sf::Vector2f& p1, const sf::Vector2f& p2,
-                                               sf::Vector2f& intersection1, sf::Vector2f& intersection2,
-                                               int& numIntersections) {
+/// @brief Computes the intersection points between a circle and a line segment, returning the intersections as
+/// parameters along the segment
+/// @param center center of the circle
+/// @param radius radius of the circle
+/// @param p1 first point of the line segment
+/// @param p2 second point of the line segment
+/// @return vector containing exactly 0, 1 or 2 intersection points, as floats in [0, 1] representing where the
+/// intersection is along the segment
+inline std::vector<float> intersectCircleAndLineParameterized(const sf::Vector2f& center,
+                                                              float radius,
+                                                              const sf::Vector2f& p1,
+                                                              const sf::Vector2f& p2) {
+    // Let d be the vector from p1 to p2
+    // Let f be the vector from p1 to the circle center c
+    // The equation solving for the intersection between a point on p1->p2 and the circle is:
+    // (p1 + t * d - c)^2 = r^2
+    // This simplifies to a quadratic equation in t:
+    // t^2 (d . d) + 2t (f . d) + (f . f - r^2) = 0
+    // Below we let a, b, and c be the coefficients of the quadratic equation
+
     // Compute the quadratic equation coefficients
     sf::Vector2f d = p2 - p1;
     sf::Vector2f f = p1 - center;
 
-    float a = simplesim::dot(d, d);
-    float b = 2 * simplesim::dot(f, d);
-    float c = simplesim::dot(f, f) - radius * radius;
+    float a = dot(d, d);
+    float b = 2 * dot(f, d);
+    float c = dot(f, f) - radius * radius;
 
     float discriminant = b * b - 4 * a * c;
 
-    if (discriminant < 0) {
-        // No intersection
-        numIntersections = 0;
-        return false;
-    } else {
-        discriminant = sqrt(discriminant);
+    std::vector<float> result(3);
 
-        float t1 = (-b - discriminant) / (2 * a);
-        float t2 = (-b + discriminant) / (2 * a);
+    if (discriminant >= 0) {
+        // If discriminant is close enough to zero, there's only one solution
+        if (std::abs(discriminant) < 1e-6) {
+            float t = -b / (2 * a);
+            result.push_back(t);
+        } else {
+            // Compute the two solutions
+            discriminant = sqrt(discriminant);
 
-        numIntersections = 0;
+            // Positive solution
+            float t1 = (-b - discriminant) / (2 * a);
+            // Negative solution
+            float t2 = (-b + discriminant) / (2 * a);
 
-        if (t1 >= 0 && t1 <= 1) {
-            intersection1 = p1 + t1 * d;
-            numIntersections++;
-        }
-        if (t2 >= 0 && t2 <= 1) {
-            if (numIntersections == 0) {
-                intersection1 = p1 + t2 * d;
-            } else {
-                intersection2 = p1 + t2 * d;
+            // Even though the solutions are for the line, we need to check if they're within the segment
+            // Thus, even a line that intersects the circle may not have any intersection points if the segment doesn't
+            // contain them
+            if (t1 >= 0 && t1 <= 1) {
+                result.push_back(t1);
             }
-            numIntersections++;
+            if (t2 >= 0 && t2 <= 1) {
+                result.push_back(t2);
+            }
         }
-
-        return numIntersections > 0;
     }
+    return result;
+}
+
+inline bool pointWithinCircle(const sf::Vector2f& center, float radius, const sf::Vector2f& point) {
+    return norm(center - point) <= radius;
 }
 
 }  // namespace simplesim
