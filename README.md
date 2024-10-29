@@ -136,8 +136,12 @@ $$
 If we let:
 
 $$
-a = \vec{d} \cdot \vec{d} \\
-b = 2\vec{f} \cdot \vec{d} \\
+a = \vec{d} \cdot \vec{d}
+$$
+$$
+b = 2\vec{f} \cdot \vec{d}
+$$
+$$
 c = \vec{f} \cdot \vec{f} - r^2
 $$
 
