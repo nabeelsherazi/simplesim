@@ -45,9 +45,9 @@ file(COPY "${CMAKE_SOURCE_DIR}/data" DESTINATION "${CMAKE_BINARY_DIR}")
 install(TARGETS simplesim_node
 DESTINATION lib/${PROJECT_NAME})
 
-# Install sprites
-install(DIRECTORY "${CMAKE_SOURCE_DIR}/data/sprites/"
-        DESTINATION "lib/${PROJECT_NAME}/data/sprites")
+# Install data files
+install(DIRECTORY "${CMAKE_SOURCE_DIR}/data/"
+        DESTINATION "lib/${PROJECT_NAME}/data/")
 
 # Install launch files
 install(DIRECTORY

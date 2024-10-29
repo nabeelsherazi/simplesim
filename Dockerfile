@@ -19,5 +19,5 @@ RUN /bin/bash -c "apt-get update -qq && rosdep install --from-paths src --ignore
 RUN /bin/bash -c "source /opt/ros/${ROS_DISTRO}/setup.bash && colcon build"
 
 # Set the entrypoint to run ROS2 when the container starts
-ENTRYPOINT ["/bin/bash", "-c", "source /workspace/install/setup.bash && ros2 run simplesim simplesim_node"]
+ENTRYPOINT ["/bin/bash", "-c", "source ${WORKSPACE}/install/setup.bash && ros2 launch ${WORKSPACE}/src/simplesim/launch/simplesim.launch.py"]
 
