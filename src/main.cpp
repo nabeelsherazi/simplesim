@@ -105,8 +105,10 @@ int main(int argc, char* argv[]) {
             }
             if (event.type == sf::Event::LostFocus) {
                 paused = true;
+                RCLCPP_INFO(sim->get_logger(), "Pausing simulation because window went out of focus");
             }
             if (event.type == sf::Event::GainedFocus) {
+                RCLCPP_INFO(sim->get_logger(), "Resuming simulation because window regained focus");
                 paused = false;
                 interframeTimer.restart();
             }

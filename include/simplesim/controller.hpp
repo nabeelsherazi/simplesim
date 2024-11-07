@@ -25,25 +25,38 @@ struct PidCoefficients {
 
 struct ControllerOptions {
     /// @brief PID coefficients for the position controller
-    PidCoefficients positionControllerTune = {.kp = 1.5f, .kd = -0.025f};
+    PidCoefficients positionControllerTune = {.kp = 1.5F, .kd = -0.025F};
 
     /// @brief PID coefficients for the cascaded velocity controller
-    PidCoefficients velocityControllerTune = {.kp = 2.0f, .kd = -0.005f};
+    PidCoefficients velocityControllerTune = {.kp = 2.0F, .kd = -0.005F};
 
     /// @brief Initial position reading for the controller
-    sf::Vector2f initialPosition = {0.0f, 0.0f};
+    sf::Vector2f initialPosition = {0.0F, 0.0F};
 
-    /// @brief How close the drone's position needs to be to a waypoint before the control considers it reached
-    float waypointEpsilon = 20.0f;
+    /// @brief How close the drone's position needs to be to a waypoint before the control considers it reached.
+    /// If usePurePursuit is true, lookaheadDistance is used as the waypoint epsilon.
+    float waypointEpsilon = 20.0F;
 
     /// @brief Maximum acceleration command the controller will issue
-    float maxAcceleration = 500.0f;
+    float maxAcceleration = 500.0F;
 
     /// @brief Whether or not to use pure pursuit
     bool usePurePursuit = true;
 
     /// @brief Lookahead distance for pure pursuit
-    float lookaheadDistance = 100.0f;
+    float lookaheadDistance = 100.0F;
+
+    /// @brief Whether or not to use an adaptive lookahead distance
+    bool useAdaptiveLookahead = false;
+
+    /// @brief Minimum lookahead distance for adaptive lookahead
+    float minLookaheadDistance = 100.0F;
+
+    /// @brief Maximum lookahead distance for adaptive lookahead
+    float maxLookaheadDistance = 1000.0F;
+
+    /// @brief Gain for adaptive lookahead
+    float adaptiveLookaheadGain = 0.5F;
 };
 
 class Controller : public Renderable, public Resettable {

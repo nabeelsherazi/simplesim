@@ -177,6 +177,14 @@ for (int i = segmentStartIndex; i < waypointList.size(); i++) {
 }
 ```
 
+### Pure pursuit with adaptive lookahead
+
+One problem with pure pursuit control is that when traveling in long straight lines, you want to be able to speed up. With a fixed lookahead distance, your carrot is a fixed radius from the vehicle, and thus the PID controller will have some maximum output command that won't be exceeded. Adaptive pure pursuit is illustrated in this [2007 paper by S. Campbell](http://hdl.handle.net/1721.1/42301). The simple idea is to scale the lookahead distance by the current speed. By providing a minimum and maximum lookahead, and a lookahead gain $K_L$, the lookahead distance to use is:
+
+$$
+L_D = \min(L_{max}, \max(L_{min}, L_{min} + K_L \| v \|))
+$$
+
 ### In an alternative world where the dynamics are not so simple
 
 Given the current vehicle position and an (x, y) goal we would like to go to. Let's find the curvature required to hit that point. Curvature is defined as $\kappa = 1/r$, where r is the radius of a circle. The larger the radius of the circle, the smaller the curvature -- a straight line is a circle of infinite radius.
@@ -208,3 +216,13 @@ Now in our case,
 The wind vector in this simulation is modeled as a 2D vector with randomly walking components. The independent random walks really work well for simulating wind. At each time step, the current wind vector is treated like an acceleration, meaning that the `windIntensity` parameter (very) roughly is analogous to the maximum jerk the wind can apply to the vehicle.
 
 Drag is modeled like this: the real equations are quadratic in velocity, but since the Reynolds number $Re$ also depends on velocity, there's also a linear regime when the $Re$ is decreasing like $1/v$. At some point, however, it plateaus, and you enter the quadratic regime, usually around Re=1000. For most objects, this happens at very slow speeds, like less than 0.5 m/s, meaning that it would be best to only use quadratic drag technically. However, this simulation models the linear regime and a faux transition anyway, because starting from quadratic drag can look very unphysical.
+
+## To do:
+
+[ ] [Regulated Pure Pursuit](https://arxiv.org/abs/2305.20026)
+
+[ ] I think there is a minor bug in how I select the segment to use for the initial pure pursuit guess. It initializes with `segment = waypointList[currentWaypointIndex + 1] - waypointList[currentWaypointIndex]` which is correct when we have not reached our very first waypoint yet but incorrect after that. This also causes the behavior where once we reach the second to last endpoint, the lookahead is set directly to the last endpoint.
+
+[ ] Test and verify that all on-the-fly parameter changing works
+
+[ ] Add faster than realtime support for simulations

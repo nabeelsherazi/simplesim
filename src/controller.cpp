@@ -144,7 +144,15 @@ void Controller::tick(sf::Time dt) {
         // If there's a waypoint after this one, use pure pursuit instead (if enabled)
         if (currentWaypointIndex + 1 < waypointList.size() && this->options.usePurePursuit) {
             // Define lookahead distance (L_d)
-            float lookaheadDistance = this->options.lookaheadDistance;
+            lookaheadDistance = this->options.lookaheadDistance;
+
+            // If adaptive lookahead is enabled, lookahead distance is increased as velocity increases
+            if (this->options.useAdaptiveLookahead) {
+                lookaheadDistance =
+                    simplesim::clamp(this->options.minLookaheadDistance +
+                                         this->options.adaptiveLookaheadGain * simplesim::norm(currentVelocity),
+                                     this->options.minLookaheadDistance, this->options.maxLookaheadDistance);
+            }
 
             // Initialize best lookahead point as the point on the current path segment closest to the current position
 
@@ -189,7 +197,10 @@ void Controller::tick(sf::Time dt) {
             }
         }
 
+        // Update drawables
         lookaheadPoint.setPosition(currentSetpoint);
+        lookaheadCircle.setOrigin({lookaheadDistance, lookaheadDistance});
+        lookaheadCircle.setRadius(lookaheadDistance);
 
         // Cascade PID controller
         // Outer loop: position error -> desired velocity
