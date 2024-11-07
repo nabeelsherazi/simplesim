@@ -33,7 +33,7 @@ The launch file can also spin up a [Foxglove Bridge](foxglove.dev) node for you 
 ## Build and Run (Docker)
 
 ```sh
-xhost +local:docker # Let docker
+xhost +local:docker # Let docker talk to your X server
 docker build -t simplesim:latest .
 docker run --rm --device=/dev/dri -e DISPLAY=$DISPLAY -v /tmp/.X11-unix:/tmp/.X11-unix simplesim:latest
 ```
