@@ -101,7 +101,9 @@ where $\vec{p}$ is a point on the circle, $\vec{c}$ is the center of the circle,
 If we parameterize our line segment as:
 
 $$
-\vec{d} = \vec{p_2} - \vec{p_1} \\
+\vec{d} = \vec{p_2} - \vec{p_1}
+$$
+$$
 \vec{p}(t) = \vec{p_1} + t\vec{d}
 $$
 
