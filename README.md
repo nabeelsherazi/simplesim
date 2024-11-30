@@ -215,9 +215,18 @@ Now in our case,
 
 ## About the wind and drag model
 
-The wind vector in this simulation is modeled as a 2D vector with randomly walking components. The independent random walks really work well for simulating wind. At each time step, the current wind vector is treated like an acceleration, meaning that the `windIntensity` parameter (very) roughly is analogous to the maximum jerk the wind can apply to the vehicle.
+The wind vector in this simulation is modeled as a 2D vector with randomly walking components. The independent random walks really work well for simulating wind. At each time step, the current wind vector is treated like an acceleration, meaning that the `windIntensity` parameter (very) roughly is analogous to the maximum jerk at any timestep.
 
-Drag is modeled like this: the real equations are quadratic in velocity, but since the Reynolds number $Re$ also depends on velocity, there's also a linear regime when the $Re$ is decreasing like $1/v$. At some point, however, it plateaus, and you enter the quadratic regime, usually around Re=1000. For most objects, this happens at very slow speeds, like less than 0.5 m/s, meaning that it would be best to only use quadratic drag technically. However, this simulation models the linear regime and a faux transition anyway, because starting from quadratic drag can look very unphysical.
+Drag is modeled like this: the real equations are quadratic in velocity, but since the Reynolds number $Re$ also depends on velocity, there's also a linear regime when the $Re$ is decreasing like $1/v$. In physical terms, this is because the flow has not separated, and so the dominant force is friction drag, i.e. the body of the object sliding against the air. At some point however, usually around $Re=1000$, $Re$ stops decreasing like $1/v$ and plateaus, so the object enters the quadratic regime. In physical terms, this is the flow separating and the dominant force becoming pressure drag, i.e. the vacuum of separated air behind the object wanting to "suck" it back. For most objects, this transition happens at very slow speeds, like less than 0.5 m/s, and so its not really worth it to even model the linear regime. For now though, simplesim does model the linear regime and has a parameter `quadraticDragThreshold` about which it lerps into quadratic drag. This seems to help with some weird diverging behavior, but you might want to disable it by setting the threshold to zero and working with just quadratic drag.
+
+The choice of a realistic pressure drag coefficient can be determined from a few real world properties. Quadrotors have a maximum force that their motors can apply, and so a maximum lateral acceleration when they're pointing sideways at max throttle. In doing this, at some point they reach some terminal lateral velocity, which is when quadratic drag exactly balances out the force from the motors. Since in simplesim we keep things simple and the mass of the quadrotor is 1, the max acceleration is the same as the max force, and already given as a parameter of the simulation. A good value is about 5g, which is typical of a quad like the S500. If we know what terminal lateral velocity we expect (a good value is about 30 m/s), then we have:
+
+$$
+a = a_{max} - cV_{t}^2 = 0
+$$
+$$
+c = \frac{a_{max}}{V_{t}^2} = \frac{2g}{30^2} \approx 0.55
+$$
 
 ## To do:
 
